@@ -340,17 +340,6 @@ saveRDS(l2, "bl_l2.RData")
 png("baseline_network.png", height = 100, width = 200, units = "mm", res= 300)
 eval(p)
 dev.off()
-
-loadfonts(device = "postscript") ## for postscript()
-postscript("baseline_network.eps", height = (.5*7.9), width = 7.9,
-           family = "Arial", paper = "special", onefile = FALSE,
-           horizontal = FALSE)
-eval(p)
-dev.off()
-
-svg("baseline_network.svg", width = 14)
-eval(p)
-dev.off()
 ```
 
 ```{r figbaseline, warning=FALSE, eval = TRUE, results='asis', out.width = "100%", fig.cap="Phenomena relevant to adolescents' emotion regulation according to theory (a) and narrative reviews (b; transparent nodes indicate constructs also present in the theory)."}
@@ -1680,17 +1669,6 @@ p <- quote({
 })
 
 png("tmnetworks.png", height = 100, width = 200, units = "mm", res= 300)
-eval(p)
-dev.off()
-
-svg("tmnetworks.svg", width = 14)
-eval(p)
-dev.off()
-
-loadfonts(device = "postscript") ## for postscript()
-postscript("tmnetworks.eps", height = (.5*7.9), width = 7.9,
-           family = "Arial", paper = "special", onefile = FALSE,
-           horizontal = FALSE)
 eval(p)
 dev.off()
 ```
