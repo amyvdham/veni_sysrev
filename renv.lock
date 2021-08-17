@@ -170,6 +170,13 @@
       "Repository": "CRAN",
       "Hash": "e8a22846fff485f0be3770c2da758713"
     },
+    "assertthat": {
+      "Package": "assertthat",
+      "Version": "0.2.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "50c838a310445e954bc13f26f26a6ecf"
+    },
     "backports": {
       "Package": "backports",
       "Version": "1.2.1",
@@ -947,6 +954,19 @@
       "Repository": "CRAN",
       "Hash": "2253a430965e222d11a2f9277cd34c2e"
     },
+    "papaja": {
+      "Package": "papaja",
+      "Version": "0.1.0.9997",
+      "Source": "GitHub",
+      "Remotes": "tidymodels/broom",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteRepo": "papaja",
+      "RemoteUsername": "crsh",
+      "RemoteRef": "HEAD",
+      "RemoteSha": "a231c3628ccf24359cc17f11a5bbc743e3fed920",
+      "Hash": "9e703c29ea6aa84ddb2a00072e0f73ee"
+    },
     "pbapply": {
       "Package": "pbapply",
       "Version": "1.4-3",
@@ -1198,6 +1218,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "f518ba47713f92d0d603eec7c6888faf"
+    },
+    "rmdfiltr": {
+      "Package": "rmdfiltr",
+      "Version": "0.1.3",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "d2e1277195d221e6118d8a77dda2e877"
     },
     "rpart": {
       "Package": "rpart",
