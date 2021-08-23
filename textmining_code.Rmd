@@ -1,0 +1,54 @@
+---
+title: "Text mining code"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Copy code from manuscript and run in separate file. This is the part that needs to be adjusted to develop the text mining with word vector embeddings. 
+
+# Line 891 - 913 from manuscript
+```{r}
+library(stringr)
+library(data.table, quietly = TRUE, warn.conflicts = FALSE)
+library(udpipe)
+library(igraph)
+library(wordcloud)
+library(Matrix)
+library(ggplot2)
+library(yaml)
+source("word_functions.R")
+source("circle2.R")
+
+#run_everything = FALSE
+study1details <- read_yaml("study1_details.yml")
+dict <- read_yaml("yaml_dict.txt")
+## Look at POS tags?
+recs <- read.csv("recs_final.csv")
+recs <- as.data.table(recs)
+  if(!is.data.table(recs)){
+    browser()
+  }
+  recs[, "doc" := 1:nrow(recs)]
+  study1details <- list(dim_recs = dim(recs))
+  
+  # Extract individual words
+  df <- lapply(recs$DE, function(x){strsplit(x, split = "; ")[[1]]})
+  df <- merge_df(recs, df, "word")
+  
+  df[, word := tolower(word)]
+  
+  # Clean
+  df <- na.omit(df, cols = "word")
+  number_docs_words <- c(docs = length(unique(df$doc)), words = length(unique(df$word)))
+  yaml::write_yaml(number_docs_words, "study1_number_docs_words.txt")
+  # Exclude words
+  exclude_terms <- readLines("exclude_terms.txt")
+  exclude_these <- unique(unlist(lapply(exclude_terms, grep, x = df$word)))
+  
+  df <- df[!exclude_these, ]
+```
+
