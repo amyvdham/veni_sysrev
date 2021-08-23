@@ -12,6 +12,7 @@ Copy code from manuscript and run in separate file. This is the part that needs 
 
 # Line 891 - 913 from manuscript
 ```{r}
+# Loading required libraries
 library(stringr)
 library(data.table, quietly = TRUE, warn.conflicts = FALSE)
 library(udpipe)
@@ -20,34 +21,58 @@ library(wordcloud)
 library(Matrix)
 library(ggplot2)
 library(yaml)
-source("word_functions.R")
-source("circle2.R")
 
-#run_everything = FALSE
+# Makes it possible to call functions that are saved in separate # R script
+source("word_functions.R")
+#source("circle2.R")
+
+# Analysis 1:  Author keywords
+# contains the dimensions of the recs dataframe 
 study1details <- read_yaml("study1_details.yml")
 dict <- read_yaml("yaml_dict.txt")
+
 ## Look at POS tags?
+# read file which contains the records into an object called recs
 recs <- read.csv("recs_final.csv")
+
+# convert object into data table
 recs <- as.data.table(recs)
-  if(!is.data.table(recs)){
+
+# if recs is not an object of type data table 
+# then code execution will be paused?
+if(!is.data.table(recs)){
     browser()
   }
-  recs[, "doc" := 1:nrow(recs)]
-  study1details <- list(dim_recs = dim(recs))
+
+# add column called doc that contains the row number.
+recs[, "doc" := 1:nrow(recs)]
+
+# create object that is a list with the dimensions of the recs data frame
+study1details <- list(dim_recs = dim(recs))
   
-  # Extract individual words
-  df <- lapply(recs$DE, function(x){strsplit(x, split = "; ")[[1]]})
-  df <- merge_df(recs, df, "word")
+# Extract individual words
+# create list with author keywords of each article
+df <- lapply(recs$DE, function(x){strsplit(x, split = "; ")[[1]]})
+
+# I do not understand how "word" is created and this causes the words that are stored in df under value to be separated? Need to look this up. 
+df <- merge_df(recs, df, "word")
+
+# make sure that the values in the column word do not contain any capitals.   
+df[, word := tolower(word)]
   
-  df[, word := tolower(word)]
-  
-  # Clean
-  df <- na.omit(df, cols = "word")
-  number_docs_words <- c(docs = length(unique(df$doc)), words = length(unique(df$word)))
-  yaml::write_yaml(number_docs_words, "study1_number_docs_words.txt")
-  # Exclude words
-  exclude_terms <- readLines("exclude_terms.txt")
-  exclude_these <- unique(unlist(lapply(exclude_terms, grep, x = df$word)))
+# Clean
+# delete all the rows that contain missings in the column word
+df <- na.omit(df, cols = "word")
+
+number_docs_words <- c(docs = length(unique(df$doc)), words = 
+                         length(unique(df$word)))
+
+yaml::write_yaml(number_docs_words, "study1_number_docs_words.txt")
+
+# Exclude words
+exclude_terms <- readLines("exclude_terms.txt")
+
+exclude_these <- unique(unlist(lapply(exclude_terms, grep, x = df$word)))
   
   df <- df[!exclude_these, ]
 ```
