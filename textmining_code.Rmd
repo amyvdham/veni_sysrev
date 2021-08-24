@@ -28,13 +28,15 @@ source("word_functions.R")
 
 ## Analysis 1:  Author keywords
 # contains the dimensions of the recs dataframe 
-study1details <- read_yaml("study1_details.yml")
+# study1details <- read_yaml("study1_details.yml")
 
 # note that dict from word_function.R is overwritten here
-dict <- read_yaml("yaml_dict.txt")
+# dict <- read_yaml("yaml_dict.txt")
+# this dictionary was used later on to classify closely related terms -> If I am correct this what I want to do with word vector embeddings instead. 
 
 ## Look at POS tags?
 # reads file which contains the records into an object called recs
+# this is were line 891 in manuscript file starts
 recs <- read.csv("recs_final.csv")
 
 # convert object into data table
@@ -77,10 +79,10 @@ yaml::write_yaml(number_docs_words, "study1_number_docs_words.txt")
 # create object with the terms that should be excluded  
 exclude_terms <- readLines("exclude_terms.txt")
 
-# this does not seem to work? Give an empty integer
+# object with all the row numbers of author keywords that should be excluded from the data frame 
 exclude_these <- unique(unlist(lapply(exclude_terms, grep, x = df$word)))
 
-# does not seem to change anything to the dataframe 
+# create new data frame that excludes all the row numbers that have an author keyword that should be excluded 
 df <- df[!exclude_these, ]
 ```
 
