@@ -1,0 +1,90 @@
+---
+title: "Try out Word2Vec"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Try to apply tutorial on GloVe in R on own data. 
+
+```{r}
+# Loading required libraries
+library(data.table, quietly = TRUE, warn.conflicts = FALSE)
+library(Matrix)
+library(ggplot2)
+
+# Required library for GloVe
+library(text2vec)
+
+# prepare data 
+# this is were line 891 in manuscript file starts
+recs <- read.csv("recs_final.csv")
+
+# convert object into data table
+recs <- as.data.table(recs)
+
+# add column called doc that contains the row number.
+recs[, "doc" := 1:nrow(recs)]
+
+# create object that is a list with the dimensions of the recs data frame
+study1details <- list(dim_recs = dim(recs))
+  
+## Extract individual words
+# create list with (separated) author keywords of each article
+df <- lapply(recs$DE, function(x){strsplit(x, split = "; ")[[1]]})
+
+# merge_df is a function from word_function.R. In short, the function unlist() is applied to the list object that has been put into the function (in this case df) and adds the output/result of this to the new column. 
+df <- merge_df(recs, df, "word")
+
+# make sure that the values in the column word do not contain any capitals.   
+df[, word := tolower(word)]
+  
+## Clean
+# delete all the rows that contain a missing value in the column word
+df <- na.omit(df, cols = "word")
+
+# create an object with the number of unique documents (articles) in the data frame (df) and the number of unique (author key-) words in the data frame. 
+number_docs_words <- c(docs = length(unique(df$doc)), words = 
+                         length(unique(df$word)))
+
+# save this information(# of articles and # of unique author keywords) in a yaml file 
+yaml::write_yaml(number_docs_words, "study1_number_docs_words.txt")
+
+## Exclude words
+# create object with the terms that should be excluded  
+exclude_terms <- readLines("exclude_terms.txt")
+
+# object with all the row numbers of author keywords that should be excluded from the data frame 
+exclude_these <- unique(unlist(lapply(exclude_terms, grep, x = df$word)))
+
+# create new data frame that excludes all the row numbers that have an author keyword that should be excluded 
+df <- df[!exclude_these, ]
+```
+
+
+
+```{r}
+# First block notebook of tutorial 
+# We need to tokenize our already tokenized set as input for text2vec, re-use cleaned text in reviews_new
+it <- itoken(reviews_new$reviewTextClean, 
+                   tokenizer = word_tokenizer,
+                   ids = reviews_new$restoReviewId,
+                   progressbar = TRUE)
+
+# create a vocabulary out of the tokenset (stopword removal and bi-grams are optional)
+vocab <- create_vocabulary(it) # use uni-grams
+
+# text2vec has the option to prune the vocabulary of low-frequent words
+vocab <- prune_vocabulary(vocab, term_count_min = 5)
+
+# What's in the vocabulary?
+print(vocab)
+
+
+```
+
+
+
