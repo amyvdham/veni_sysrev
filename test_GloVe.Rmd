@@ -33,6 +33,7 @@ recs[, "doc" := 1:nrow(recs)]
 study1details <- list(dim_recs = dim(recs))
   
 ## Extract individual words
+##### -> DIT IS WAARSCHIJNLIJK NIET NODIG MOET WEL ; EN HOOFDLETTERS WEGHALEN MAAR NIET WORD PER ROW.
 # create list with (separated) author keywords of each article
 df <- lapply(recs$DE, function(x){strsplit(x, split = "; ")[[1]]})
 
