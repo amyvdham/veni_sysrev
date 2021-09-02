@@ -75,6 +75,10 @@ number_docs_words <- c(docs = length(unique(df$doc)), words =
 # save this information(# of articles and # of unique author keywords) in a yaml file 
 yaml::write_yaml(number_docs_words, "study1_number_docs_words.txt")
 
+# check how many unique documents and words there are before excluding terms. 
+length(unique(df$doc))
+length(unique(df$word))
+
 ## Exclude words
 # create object with the terms that should be excluded  
 exclude_terms <- readLines("exclude_terms.txt")
@@ -84,5 +88,11 @@ exclude_these <- unique(unlist(lapply(exclude_terms, grep, x = df$word)))
 
 # create new data frame that excludes all the row numbers that have an author keyword that should be excluded 
 df <- df[!exclude_these, ]
+
+# check how many unique documents and how many unique words there are after excluding non substantive words. 
+length(unique(df$doc))
+length(unique(df$word))
+
+# NOTE after excluding the terms the corpus thus exists of 5030 documents with 7848 terms and not of 5031 terms with 8080 unique terms. 
 ```
 
