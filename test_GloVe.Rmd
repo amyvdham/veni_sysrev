@@ -58,13 +58,42 @@ exclude_these <- unique(unlist(lapply(exclude_terms, grep, x = df$word)))
 # create new data frame that excludes all the row numbers that have an author keyword that should be excluded 
 df <- df[!exclude_these, ]
 
+# check the number of author keywords per doc
+df_n_keywords <- df %>% 
+  group_by(doc) %>% 
+  summarise(n_keywords = n()) # snap nog niet helemaal hoe deze code weet dat die n() dan betrekking heeft op de column word maar gaat wel goed. 
+
+## NOTE: some keywords contain more than one word, e.g. risk factors or follow-up studies and youth smoking behavior. So to now the lenght (number of words) per doc this won't work
+
 # Now that the dataset is cleaned created a df in which each document is a row and the column DEclean contains the author keywords of the specific document. Shape the tokens back to their original form
 df_new <- df %>% 
           group_by(word) %>% 
           group_by(doc) %>% 
           summarise(DEclean = str_c(word, collapse = " "))
+
+# second attempt word count
+df_new$DEclean_length <- sapply(df_new$DEclean, function(x){str_count(x, " ")+1})
+# this gives us the number of words in the column DEclean for each row. NOTE: words that are connected by a - are seen as one word, e.g. follow-up or affect-regulatory. Also, abbreviations are also counted as a word, e.g. INFORMATION AND COMMUNICATION TECHNOLOGY (ICT). (ICT) is counted in this example. 
+
+df_new <- data.table(df_new)
+
+# Max length of author keywords 
+max(df_new$DEclean_length)
+
+# investigate with the highest value of number of author keywords
+df_new[df_new$doc == 3667, 'DEclean']
+
+# check if this is a result of data cleaning by looking at the original data set
+recs[recs$doc == 3667, 'DE']
+
+# -> shows that this is not a result of data cleaning and it seems that this article does really have 524 author keywords.
+
+# NOTE: document/case/row shown below contains < in author keywords. Does this need to be cleaned?
+df_new[df_new$doc == 5234, 'DEclean']
+
 ```
 
+### GloVe ###
 Try to run the code of the [tutorial] (https://medium.com/broadhorizon-cmotions/nlp-with-r-part-2-training-word-embedding-models-and-visualize-results-ae444043e234) with the cleaned dataset from above. 
 ```{r}
 # We need to tokenize our already tokenized set as input for text2vec, re-use cleaned text in df_new
@@ -78,6 +107,7 @@ vocab <- create_vocabulary(it) # use uni-grams
 
 # text2vec has the option to prune the vocabulary of low-frequent words
 vocab <- prune_vocabulary(vocab, term_count_min = 5)
+# NOTE; term_count_min is set to 5 here. 
 
 # What's in the vocabulary?
 print(vocab)
@@ -97,6 +127,7 @@ x_max <- length(vocab$doc_count)/100
 # set up the embedding matrix and fit model
 glove_model <- GloVe$new(rank = 32, x_max = x_max) 
 glove_embedding = glove_model$fit_transform(tcm, n_iter = 20, convergence_tol = 0.01, n_threads = 4)
+# NOTE: number of dimensions is set to 32
 
 # combine main embedding and context embeddings (sum) into one matrix
 glove_embedding = glove_embedding + t(glove_model$components) # the transpose of the context matrix
@@ -115,4 +146,31 @@ cos_sim = sim2(x = glove_embedding, y = word, method = "cosine", norm = "l2")
 head(sort(cos_sim[,1], decreasing = TRUE), 10)
 ```
 
+### Word2Vec ###
+First, vectorize text, create an index and use padding (add zeros to create equal sizes)
+```{r}
+# load required libraries used in the tutorial 
+library(tidyverse)
+library(tidytext)
+library(keras)
+library(uwot)
+
+# maximum number of words for a review
+max_length <- 524
+
+# Vectorize the tokens, each token will receive a unique integer, the index of that token in a dictionary. 
+# Remember, we already restricted the corpus to 37.520 unique words.
+tokenizer_w2v <- text_tokenizer() %>% fit_text_tokenizer(df_new)
+
+
+# and put these integers into a sequence
+sequences_w2v <- texts_to_sequences(tokenizer_w2v, df_new)
+
+# and make sure that every sequence has the same length (Keras requirement)
+input_w2v <- pad_sequences(sequences_w2v, maxlen = max_length)
+
+
+# show an example from the created index (word and vector)
+tokenizer_w2v$word_index[200:204]
+```
 
