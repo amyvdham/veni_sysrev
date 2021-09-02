@@ -99,7 +99,6 @@ df[df$doc == 5234, 'word']
 # check how many unique documents and how many unique words there are after excluding non substantive words. 
 length(unique(df$doc))
 length(unique(df$word))
-
 ```
 
 ### GloVe ###
