@@ -88,8 +88,13 @@ recs[recs$doc == 3667, 'DE']
 
 # -> shows that this is not a result of data cleaning and it seems that this article does really have 524 author keywords.
 
-# NOTE: document/case/row shown below contains < in author keywords. Does this need to be cleaned?
+# NOTE: document/case/row shown below contains < in author keywords. Does this need to be cleaned? It also includes the word literature whereas this word was part of the terms that had to be excluded.
 df_new[df_new$doc == 5234, 'DEclean']
+
+# check why those words with literature were not excluded
+df[df$doc == 5234, 'word']
+
+# ->  they were not excluded because the regular expression ^literature$ tells to only delete those values that where start of the string is followed by literature followed by the end of the string. 
 
 ```
 
@@ -147,6 +152,11 @@ head(sort(cos_sim[,1], decreasing = TRUE), 10)
 ```
 
 ### Word2Vec ###
+Prep Word2Vec, length of author keywords per article and number of unique words. 
+```{r}
+
+```
+
 First, vectorize text, create an index and use padding (add zeros to create equal sizes)
 ```{r}
 # load required libraries used in the tutorial 
