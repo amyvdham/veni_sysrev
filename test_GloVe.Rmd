@@ -96,6 +96,10 @@ df[df$doc == 5234, 'word']
 
 # ->  they were not excluded because the regular expression ^literature$ tells to only delete those values that where start of the string is followed by literature followed by the end of the string. 
 
+# check how many unique documents and how many unique words there are after excluding non substantive words. 
+length(unique(df$doc))
+length(unique(df$word))
+
 ```
 
 ### GloVe ###
@@ -112,7 +116,7 @@ vocab <- create_vocabulary(it) # use uni-grams
 
 # text2vec has the option to prune the vocabulary of low-frequent words
 vocab <- prune_vocabulary(vocab, term_count_min = 5)
-# NOTE; term_count_min is set to 5 here. 
+# NOTE; term_count_min is set to 5 here.
 
 # What's in the vocabulary?
 print(vocab)
@@ -154,7 +158,28 @@ head(sort(cos_sim[,1], decreasing = TRUE), 10)
 ### Word2Vec ###
 Prep Word2Vec, length of author keywords per article and number of unique words. 
 ```{r}
+## count the number of words per review and plot results
+df %>% 
+group_by(doc) %>% summarise(n_tokens = n()) %>%
+mutate(n_tokens_binned = cut(n_tokens, breaks = c(0,seq(1,11,1),Inf))) %>% 
+group_by(n_tokens_binned) %>% summarise(n_articles = n()) %>% 
 
+## pass result to ggplot
+ggplot(aes(x=n_tokens_binned,y=n_articles)) + 
+geom_bar(stat='identity',fill='green') + 
+theme_minimal() + 
+theme(axis.text.x = element_text(angle = 45, hjust=1)) + 
+geom_text(size=2, aes(label=n_articles), position=position_dodge(width=0.9), vjust=-0.25)
+
+# most articles have 2-6 author keywords -> There are also 47 articles that only have 1 author keyword
+
+# check word frequency: shows how many of the articles contain more and less than 5 author keywords. 
+df %>% 
+group_by(word) %>% summarize(word_freq=n()) %>% 
+mutate(min_5_freq = case_when(word_freq<5~'token frequency: <5',TRUE~'token frequency: >=5')) %>% 
+group_by(min_5_freq) %>% summarise(n_tokens = n()) %>% mutate(pct_tokens = n_tokens / sum(n_tokens))
+
+# -> more than 90% of the words appear less than 5 times in the corpus. 
 ```
 
 First, vectorize text, create an index and use padding (add zeros to create equal sizes)
