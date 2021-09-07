@@ -88,6 +88,18 @@ recs[recs$doc == 3667, 'DE']
 
 # -> shows that this is not a result of data cleaning and it seems that this article does really have 524 author keywords.
 
+# check the doi of this article so I can look it up
+recs[recs$doc == 3667, c('doi', 'DI', 'title', 'AU', 'PY')]
+# -> online this journal contains all the keywords of the articles belonging to this journal in the past 5 years. 
+
+# check article with 77 author keywords
+recs[recs$doc == 5234, c('doi', 'DI', 'title', 'AU', 'PY', 'DE')] 
+# -> looked up the article online and does not seem to have any author keywords, do not not know where the words come from. 
+
+# check article with 33 author keywords
+recs[recs$doc == 2750, c('doi', 'DI', 'title', 'AU', 'PY', 'DE')] 
+# -> this is correct looked up the article and does indeed contain 33 words in the author keywords. Same is the case for the article with 30 author keywords (doc = 1186)
+
 # NOTE: document/case/row shown below contains < in author keywords. Does this need to be cleaned? It also includes the word literature whereas this word was part of the terms that had to be excluded.
 df_new[df_new$doc == 5234, 'DEclean']
 
