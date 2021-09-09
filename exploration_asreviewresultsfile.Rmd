@@ -36,8 +36,22 @@ summary(as.factor(total$included))
 
 # -> if I merge the two datasets all the documents that were coded with a 1 (i.e. relevant/included) in the column included are dropped as well as so articles that had the value NA on the variable included? 
 
+# check combinaties van columns notes, rayyan, excluded_rayyan en included
+# unique combinaties voor records die op de variable notes included zijn geassigned 
+unique(total[total$notes ==  " RAYYAN-INCLUSION: {\"Caspar\"=>\"Included\"}", c("rayyan", "excluded_rayyan", "included")])
 
-# check combinatie van columns notes, rayyan, excluded_rayyan en included
+# unique combinaties voor records die op de variable notes Excluded zijn geassigned 
+unique(asreview_results[asreview_results$notes ==  " RAYYAN-INCLUSION: {\"Caspar\"=>\"Excluded\"}", c("rayyan", "excluded_rayyan", "included")])
 
+# unique combinaties voor records die op de variable included 1 zijn geassigned
+unique(asreview_results[asreview_results$included == 1, c("notes", "rayyan", "excluded_rayyan")])
+
+# unique combinaties voor records die op de variable included 0 zijn geassigned
+unique(asreview_results[asreview_results$included == 0, c("notes", "rayyan", "excluded_rayyan")])
+
+# check unique values for recs bestand (eind selectie)
+unique(total$excluded_rayyan)
+unique(total$included)
+unique(total$rayyan)
 ```
 
