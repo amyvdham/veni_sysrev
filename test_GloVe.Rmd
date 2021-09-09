@@ -1,5 +1,6 @@
 ---
 title: "Try out GloVe and Word2Vec"
+Author: "Amy van der Ham"
 output: html_document
 editor_options: 
   chunk_output_type: console
