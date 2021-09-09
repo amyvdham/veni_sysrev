@@ -1,0 +1,40 @@
+---
+title: "check asreview file"
+author: "Amy van der Ham"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Check what the file asreview_result_sysrevemotprob.csv contains. 
+
+```{r}
+library(data.table, quietly = TRUE, warn.conflicts = FALSE)
+
+# load .csv file into object 
+asreview_results <- read.csv("asreview_result_sysrevemotprob.csv")
+
+# convert object into data table
+asreview_results <- as.data.table(asreview_results)
+unique(asreview_results$included)
+summary(as.factor(asreview_results$included))
+asreview_results[, c('included', 'asreview_ranking', 'record_id')]
+max(asreview_results$asreview_ranking)
+
+# check to recs file that is used in analysis to compare
+recs <- read.csv("recs_final.csv")
+
+# convert object into data table
+recs <- as.data.table(recs)
+
+# try to merge the datasets 
+total <- merge(asreview_results, recs, by="doi")
+total$included
+summary(as.factor(total$included))
+
+# -> if I merge the two datasets all the documents that were coded with a 1 (i.e. relevant/included) in the column included are dropped as well as so articles that had the value NA on the variable included? 
+```
+
