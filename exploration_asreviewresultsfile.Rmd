@@ -32,9 +32,12 @@ recs <- as.data.table(recs)
 
 # try to merge the datasets 
 total <- merge(asreview_results, recs, by="doi")
-total$included
 summary(as.factor(total$included))
 
 # -> if I merge the two datasets all the documents that were coded with a 1 (i.e. relevant/included) in the column included are dropped as well as so articles that had the value NA on the variable included? 
+
+
+# check combinatie van columns notes, rayyan, excluded_rayyan en included
+
 ```
 
