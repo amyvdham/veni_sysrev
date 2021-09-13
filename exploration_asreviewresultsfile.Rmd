@@ -19,6 +19,8 @@ asreview_results <- read.csv("asreview_result_sysrevemotprob.csv")
 
 # convert object into data table
 asreview_results <- as.data.table(asreview_results)
+
+# explore included column and other columns from asreview
 unique(asreview_results$included)
 summary(as.factor(asreview_results$included))
 asreview_results[, c('included', 'asreview_ranking', 'record_id')]
@@ -53,5 +55,20 @@ unique(asreview_results[asreview_results$included == 0, c("notes", "rayyan", "ex
 unique(total$excluded_rayyan)
 unique(total$included)
 unique(total$rayyan)
+```
+CONCLUSION: Caspar heeft uitgelegd dat in dit geval 1 juist staat voor excluded asreview en 0 included asreview. 
+
+```{r}
+# now that I know that I want to check how many records there are that score Na on included and False on rayyan. I expect to be at least twelve cases
+asreview_results[asreview_results$included == "Na" & asreview_results$rayan == "False", ]
+```
+
+
+Check information from simulation run in terminal with data set 
+```{r}
+# terminal: The following records are prior knowledge:
+asreview_results[asreview_results$authors ==  "CHERRY KE and GERSTEIN ED and CICIOLLA L", c("included", "title")]
+
+asreview_results[asreview_results$authors ==  "PARSONS SK and BARLOW SE and LEVY SL and SUPRAN SE and KAPLAN SH", c("included", "title")]
 ```
 
