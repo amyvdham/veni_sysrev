@@ -67,7 +67,7 @@ criteria <- asreview_results[asreview_results$rayyan == "False", ]
 
 summary(as.factor(criteria$included))
 
-# need to check this out. Look at manuscript line 792 screening
+# need to further explore this. Look at manuscript line 792 screening
 ```
 
 
