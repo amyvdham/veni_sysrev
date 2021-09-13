@@ -55,12 +55,19 @@ unique(asreview_results[asreview_results$included == 0, c("notes", "rayyan", "ex
 unique(total$excluded_rayyan)
 unique(total$included)
 unique(total$rayyan)
+is.na(asreview_results$included)
 ```
 CONCLUSION: Caspar heeft uitgelegd dat in dit geval 1 juist staat voor excluded asreview en 0 included asreview. 
 
 ```{r}
-# now that I know that I want to check how many records there are that score Na on included and False on rayyan. I expect to be at least twelve cases
-asreview_results[asreview_results$included == "Na" & asreview_results$rayan == "False", ]
+# now that I know that I want to check on what criteria the 12 other observations are deleted. Expect this to be based on rayyan = False and included = na but this is does not seem to be the case looking at the criteria below. 
+unique(asreview_results[is.na(asreview_results$included), c("notes", "rayyan", "excluded_rayyan")])
+
+criteria <- asreview_results[asreview_results$rayyan == "False", ]
+
+summary(as.factor(criteria$included))
+
+# need to check this out. Look at manuscript line 792 screening
 ```
 
 
