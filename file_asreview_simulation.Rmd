@@ -54,7 +54,7 @@ subset_irr <- subset_irrelevant[ ,c("PT", "AU", "AF", "TI", "SO", "LA", "DT", "D
 
 # merge the two dataframes 
 asreview_simulation <- rbind(asreview_sim, subset_irr)
-# Note: there are 6583 observations. This is 12 less than the in the asreview_result_sysrevemotprob.csv file I think this are cases that have NA on included in this dataframe but have False on the column rayyan in this dataframe. Have to check this in exploration_asreviewresultsfile.Rmd. It does not really matter that these cases are excluded for the simulation however. 
+# Note: there are 6583 observations. This is 12 less than the in the asreview_result_sysrevemotprob.csv file. Have to check reason for this in exploration_asreviewresultsfile.Rmd. Probably something to do with rayyan. It does not really matter that these cases are excluded for the simulation however. 
 
 # check how many records are coded relevant 1 and irrelevant 0 in the final dataframe
 summary(as.factor(asreview_simulation$included))
