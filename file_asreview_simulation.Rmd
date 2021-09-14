@@ -63,5 +63,32 @@ summary(as.factor(asreview_simulation$included))
 write.csv(asreview_simulation, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/asreview_simulation/asreview_simulation.csv", row.names = FALSE)
 ```
 
+Need to create the file again as the final file above did not include the column abstracts. 
+
+```{r}
+# rename the original included variable that was in the asreview_result_sysrevemotprob.csv to included_old so that we can call the new and correctly coded (1 = relevant, 0 = irrelevant) column included. 
+asr_results <- asreview_results
+names(asr_results)[names(asr_results) == 'included'] <- 'included_old'
+
+# create new included column in which 1 indeed indicates relevant. So all the articles that are in the data set recs have been deemed suitable for analysis so need to receive one on this new included variable.
+asr_results$included <- ifelse(asr_results$doi %in% recs$doi, 1, NA)
+
+# check if this went correctly
+summary(as.factor(asr_results$included))
+# -> 6305 now have a value of 1 on the variable included so this is correct
+
+# give all records that have a value of 1 on the variable included_old (which was the revert coded variable) a value of 0 on the variable included
+setDT(asr_results)[included_old == 1, included := 0]
+
+# check if this went correctly
+summary(as.factor(asr_results$included))
+
+# drop the column included_old to make sure this one is not taken as input in asreview
+asr_results[ ,included_old := NULL]
+
+# save the new dataframe which also included the column abstracts
+write.csv(asr_results, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/asreview_simulation/asreview_simulation2.csv", row.names = FALSE)
+
+```
 
 
