@@ -56,6 +56,35 @@ dim(df_wordvecemb)
 # First column is named word and the other columns dim1-40
 colnames(df_wordvecemb) <- c("word", paste0("dim", 1:40))
 
+# check if there are any missings
+summary(df_wordvecemb)
+# -> no missing values. 
+```
+
+Study 2: code below shows words that are delete from abstracts before applying 
+```{r}
+# Keyword extraction ------------------------------------------------------
+
+# Exclude words
+df_kw <- readRDS("study2_df_kw.RData")
+
+# dit is denk een check  
+# No numeric values
+# all(is.na(as.numeric(df_kw$lemma)))
+#df_kw$lemma[nchar(df_kw$lemma) == 3]
+
+
+kw_tr <- readRDS("study2_textrank.RData")
+
+
+# Merge back with original data
+df_kw$keyword <- txt_recode_ngram(df_kw$lemma, compound = kw_tr$keywords$keyword, ngram = kw_tr$keywords$ngram, sep = " ")
+
+df_kw$keyword[!df_kw$keyword %in% kw_tr$keywords$keyword] <- NA
+  
+df_analyze <- df_kw[!is.na(df_kw$keyword), ]
+# let op dit misschien in aparte folder opslaan?!
+saveRDS(df_analyze, "study2_beforedict.RData")
 
 ```
 
