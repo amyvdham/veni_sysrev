@@ -1,0 +1,308 @@
+---
+title: "visualization word2vec - Rebecca Barter"
+Author: "Amy van der Ham"
+date: "9/24/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# load in some useful libraries need to copy tutorial 
+library(knitr)
+library(dplyr)
+library(reshape2)
+library(cluster)
+library(ggplot2)
+library(devtools)
+# install the development version of superheat
+# devtools::install_github("rlbarter/superheat")
+library(superheat)
+```
+
+# load and clean data
+```{r}
+# load csv into object 
+dict_wordvecemb <- read.csv("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/asreview_simulation/dict_wordvec.csv", header = FALSE)
+
+# adjust the first column name to word
+colnames(dict_wordvecemb)[1] <- "word"
+
+# check structure of dataframe
+str(dict_wordvecemb)
+
+# remove certain characters from the column V2 which now is column of the type 
+# character and contains a string as value. 
+library(tidyverse)
+# create new data frame that can be used for applying adjustments
+df_wordvecemb <- dict_wordvecemb
+
+# remove the [ character from V2 
+df_wordvecemb$V2 <-gsub("\\[","",as.character(df_wordvecemb$V2))
+
+# remove the ] character from V2 
+df_wordvecemb$V2 <-gsub("\\]","",as.character(df_wordvecemb$V2))
+
+# remove the \n character from V2 
+df_wordvecemb$V2 <-gsub("\\\n","",as.character(df_wordvecemb$V2))
+
+# check if removing the characters went correctly 
+df_wordvecemb[1,"V2"]
+# -> yes there are now only numbers (the vectors)
+
+# split column V2 into multiple columns
+library(splitstackshape)
+# separate on the space
+df_wordvecemb <- cSplit(df_wordvecemb, "V2", " ")
+
+# retain dimensions of data frame
+dim(df_wordvecemb)
+# -> we have 19,476 words that are defined by 40 dimensions. These dimensions define the context of the words.
+
+# rename the column names of the data frame. 
+# First column is named word and the other columns dim1-40
+colnames(df_wordvecemb) <- c("word", paste0("dim", 1:40))
+
+# check if there are any missings
+summary(df_wordvecemb)
+# -> no missing values. 
+
+# check structure 
+str(df_wordvecemb)
+```
+
+
+Prepare data for analysis
+```{r}
+# for same reason rename the rownames does not work on the data frame so first convert to matrix
+#  transform data frame to matrix
+mat_wordvecemb <- as.matrix(df_wordvecemb)
+# the first column contains the words so we want to set the row names accordingly
+rownames(mat_wordvecemb) <- mat_wordvecemb[,1]
+# and then remove the first column
+mat_wordvecemb <- mat_wordvecemb[,-1]
+
+# check str of the matrix
+str(mat_wordvecemb)
+
+# convert matrix back to dataframe
+df <- as.data.frame(mat_wordvecemb)
+
+# check structure of this data frame
+str(df)
+
+# change all columns to numeric 
+df[,1:40] <- sapply(df[,1:40],as.numeric)
+
+# see what function t() does when applied on this data frame
+testmat <- t(df)
+str(testmat)
+```
+
+
+Write a function for computing the pairwise cosine similarity between entries in a matrix. 
+```{r}
+CosineFun <- function(x, y){
+  # calculate the cosine similarity between two vectors: x and y
+  c <- sum(x*y) / (sqrt(sum(x * x)) * sqrt(sum(y * y)))
+  return(c)
+}
+
+CosineSim <- function(X) {
+  # calculate the pairwise cosine similarity between columns of the matrix X.
+  # initialize similarity matrix
+  m <- matrix(NA, 
+              nrow = ncol(X),
+              ncol = ncol(X),
+              dimnames = list(colnames(X), colnames(X)))
+  cos <- as.data.frame(m)
+  
+  # calculate the pairwise cosine similarity
+  for(i in 1:ncol(X)) {
+    for(j in i:ncol(X)) {
+      co_rate_1 <- X[which(X[, i] & X[, j]), i]
+      co_rate_2 <- X[which(X[, i] & X[, j]), j]  
+      cos[i, j] <- CosineFun(co_rate_1, co_rate_2)
+      # fill in the opposite diagonal entry
+      cos[j, i] <- cos[i, j]        
+    }
+  }
+  return(cos)
+}
+```
+
+# Cluster 1000 random words from the dataframe into meaningful groups.
+```{r}
+# takes a really long time because I am running it on 19467 words for testing I will only run it on 1000 words
+cosine_similarity <- CosineSim(t(df[c(1:50, 300:350, 600:700, 845:945, 2000:2100, 18550:18700, 5000:5250, 13840:14000, 8000:8032), ]))
+
+# check dimensions
+dim(cosine_similarity)
+```
+
+The function below calculates the silhouette width for every data point provided in the cosine.matrix argument based on the clusters provided by the membership argument.
+```{r}
+# calculate the cosine silhouette width, which in cosine land is 
+# (1) the lowest average dissimilarity of the data point to any other cluster, 
+#  minus
+# (2) the average dissimilarity of the data point to all other data points in 
+#     the same cluster
+cosineSilhouette <- function(cosine.matrix, membership) {
+  # Args:
+  #   cosine.matrix: the cosine similarity matrix for the words
+  #   membership: the named membership vector for the rows and columns. 
+  #               The entries should be cluster centers and the vector 
+  #               names should be the words.
+  if (!is.factor(membership)) {
+    stop("membership must be a factor")
+  }
+  # note that there are some floating point issues:
+  # (some "1" entires are actually sliiightly larger than 1)
+  cosine.dissim <- acos(round(cosine.matrix, 10)) / pi
+  widths.list <- lapply(levels(membership), function(clust) {
+    # filter rows of the similarity matrix to words in the current cluster
+    # filter cols of the similarity matrix to words in the current cluster
+    cosine.matrix.inside <- cosine.dissim[membership == clust, 
+                                          membership == clust]
+    # a: average dissimilarity of i with all other data in the same cluster
+    a <- apply(cosine.matrix.inside, 1, mean)
+    # filter rows of the similarity matrix to words in the current cluster
+    # filter cols of the similarity matrix to words NOT in the current cluster
+    other.clusters <- levels(membership)[levels(membership) != clust]
+    cosine.matrix.outside <- sapply(other.clusters, function(other.clust) {
+      cosine.dissim[membership == clust, membership == other.clust] %>%
+        apply(1, mean) # average over clusters
+    })
+    # b is the lowest average dissimilarity of i to any other cluster of 
+    # which i is not a member
+    b <- apply(cosine.matrix.outside, 1, min)
+    # silhouette width is b - a
+    cosine.sil.width <- b - a
+    data.frame(word = names(cosine.sil.width), width = cosine.sil.width)
+  })
+  widths.list <- do.call(rbind, widths.list)
+  # join membership onto data.frame
+  membership.df <- data.frame(word = names(membership), 
+                              membership = membership)
+  widths.list <- left_join(widths.list, membership.df, by = "word")
+  return(widths.list)
+}
+```
+Using the cosineSilhouette() function to calculating the average cosine silhouette width for each k, we can plot k versus average cosine silhouette width across all observations for each number of clusters, k.
+
+```{r}
+set.seed(238942)
+# calculate the average silhouette width for k=5, ..., 20
+sil.width <- sapply(5:20, function(k) {
+  # generate k clusters
+  membership <- pam(cosine_similarity, k = k)
+  # calcualte the silhouette width for each observation
+  width <- cosineSilhouette(cosine_similarity, 
+                   membership = factor(membership$clustering))$width
+  return(mean(width))
+})
+
+# plot k verus silhouette width
+data.frame(k = 5:20, width = sil.width) %>%
+  ggplot(aes(x = k, y = width)) +
+  geom_line() + 
+  geom_point() +
+  scale_y_continuous(name = "Avergae silhouette width")
+```
+Based on the plot the best k seems to be either 5 or 11. 
+
+# Jaccard Similarity
+Next, for each set of cluster membership pairs (where each membership vector is calculated based on a 90% sub-sample of the data), we want to calculate the Jaccard similarity of the membership vectors.
+
+Since each membership iteration corresponds to a 90% sub-sample, we ignore words that are missing from either of the iterations.
+
+The generateClusters() function generates k clusters (where we range k over some set of values such as 5 to 20). We do this N times, each time taking a subset of 90% of the data.
+
+Based on these N iterations of clusters we will evaluate both performance and stability and select a number of clusters based on these criterion.
+```{r}
+library(cluster)
+
+# perform clustering for k in k.range clusters over N 90% sub-samples 
+generateClusters <- function(similarity.mat, k.range, N) {
+  random.subset.list <- lapply(1:100, function(i) {
+    sample(1:nrow(similarity.mat), 0.9 * nrow(similarity.mat))
+    })
+  lapply(k.range, function(k) {
+    print(paste("k =", k))
+    lapply(1:N, function(i) {
+      # randomly sample 90% of words
+      cosine.sample <- similarity.mat[random.subset.list[[i]], random.subset.list[[i]]]
+      # perform clustering
+      pam.clusters <- pam(1 - cosine.sample, k = k, diss = TRUE)
+    })
+  })
+}
+```
+
+We decide to test the range of k=5,...,20 clusters and repeat each of these clusterings across 100 different 90% sub-sample.
+```{r}
+# generate clusters ranging from 5 to 20 cluster groups for each of 100 subsamples
+# This will take a little while to run
+cluster.iterations <- generateClusters(cosine_similarity, 
+                                       k.range = 5:20, 
+                                       N = 100)
+```
+
+We next need to clean the results into a nice format. The outer list of join.cluster.iterations below corresponds to each k value. Each list entry is a data frame for a single subsample in which the first column corresponds to the word and the remaining columns correspond to the word cluster for each value of k.
+```{r}
+# clean the simulation structure
+join.cluster.iterations <- lapply(cluster.iterations, function(list) {
+  # for each list of iterations (for a specific k), 
+  # full-join the membership vectors into a data frame 
+  # (there will be missing values in each column)
+  Reduce(function(x, y) full_join(x, y, by = "words"), 
+    lapply(list, function(cluster.obj) {
+      df <- data.frame(words = names(cluster.obj$clustering), 
+                 clusters = cluster.obj$clustering)
+      }))
+  })
+# clean column names 
+join.cluster.iterations <- lapply(join.cluster.iterations, function(x) {
+  colnames(x) <- c("words", paste0("membership", 1:100))
+  return(x)
+  })
+```
+
+Below we print the first six entries of the membership vectors for 7 of the 100 iterations when k=5. Notice that there are NA values: these correspond to words that were omitted in the 90% subsample. There are actually 100 membership rows in the full data frame, each corresponding to an iteration of PAM with k=5 on a 90% subsample.
+```{r}
+# view the first 8 columns of the first data frame (correpsonding to k=5)
+kable(head(join.cluster.iterations[[1]][, 1:8]))
+```
+
+
+Next for each pair of these cluster iterations, we can calculate the Jaccard similarity. To speed things up, we wrote a Jaccard function in C++. Note also that to avoid correlations, we take independent pairs: e.g. we calculate the Jaccard similarity between the membership vector from iterations 1 and 2, and then from 3 and 4, then from 5 and 6, etc. This means that for each value of k we calculate 50 Jaccard similarity values.
+```{r}
+# calculate the pairwise jaccard similarity between each of the cluster 
+# memberships accross the common words
+# to avoid correlation, we do this pairwise between simulations 1 and 2, 
+# and then between simulations 3 and 4, and so on
+library(Rcpp)
+library(reshape2)
+# use Rcpp to speed up the computation
+sourceCpp('code/Rcpp_similarity.cpp')
+jaccard.similarity <- sapply(join.cluster.iterations, 
+       function(cluster.iteration) {
+        sapply(seq(2, ncol(cluster.iteration) - 1, by = 2), 
+             function(i) {
+               # calculate the Jaccard similarity between each pair of columns
+               cluster.iteration.pair <- cluster.iteration[ , c(i, i + 1)]
+               colnames(cluster.iteration.pair) <- c("cluster1", "cluster2")
+               # remove words that do not appear in both 90% sub-samples
+               cluster.iteration.pair <- cluster.iteration.pair %>%
+                 filter(!is.na(cluster1), !is.na(cluster2))
+               # Calcualte the Jaccard similarity between the two cluster vectors
+               RcppSimilarity(cluster.iteration.pair[ , 1], 
+                              cluster.iteration.pair[ , 2])
+             })
+  })
+```
+
