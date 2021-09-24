@@ -15,7 +15,7 @@ Load in the csv with the word vector embeddings obtained from the asreview simul
 
 ```{r}
 # load csv into object 
-dict_wordvecemb <- read.csv("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/asreview_simulation/dict_wordvec.csv", header = FALSE)
+dict_wordvecemb <- read.csv("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/asreview_simulation/dict_wordvec.csv", header = FALSE)
 
 # adjust the first column name to word
 colnames(dict_wordvecemb)[1] <- "word"
@@ -63,28 +63,84 @@ summary(df_wordvecemb)
 
 Study 2: code below shows words that are delete from abstracts before applying 
 ```{r}
+# load libraries
+library(stringr)
+library(udpipe)
+library(igraph)
+library(wordcloud)
+library(Matrix)
+library(yaml)
+library(Rmpfr)
+library(topicmodels)
+library(udpipe)
+library(slam)
+library(tidytext)
+library(ggplot2)
+library(textrank)
+source("word_functions.R")
+source("circle2.R")
+
+recs <- data.table(read.csv("recs_final.csv"))
+recs[, "doc" := 1:nrow(recs)]
+
+# convert abstract column to lower case
+recs$AB <- tolower(recs$AB)
+
+# download English udpipe model
+ud_model <- udpipe_download_model(language = "english")
+# load the language model
+ud_model <- udpipe_load_model("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/english-ewt-ud-2.5-191206.udpipe")
+ud_model <- udpipe_load_model(ud_model$file)
+
+# apply to abstract of recs data table
+udp_res <- udpipe_annotate(ud_model, x = recs$AB, doc_id = recs$doc)
+
+
+# convert to data table and save as .Rdata
+df <- as.data.table(udp_res)
+saveRDS(df, "study2_df.RData")
+  
 # Keyword extraction ------------------------------------------------------
 
 # Exclude words
-df_kw <- readRDS("study2_df_kw.RData")
+df_kw <- df[upos %in% c("NOUN", "ADJ"), ]
+df_kw <- df_kw[grepl("^[a-zA-Z].", df_kw$lemma), ]
+exclude_terms <- readLines("exclude_terms.txt")
+exclude_these <- unique(unlist(lapply(exclude_terms, grep, x = df_kw$lemma)))
+df_kw <- df_kw[-exclude_these, ]
+saveRDS(df_kw, "study2_df_kw.RData")
 
-# dit is denk een check  
+# Dit is een check  
 # No numeric values
 # all(is.na(as.numeric(df_kw$lemma)))
-#df_kw$lemma[nchar(df_kw$lemma) == 3]
+# df_kw$lemma[nchar(df_kw$lemma) == 3]
 
 
-kw_tr <- readRDS("study2_textrank.RData")
-
+kw_tr <- textrank_keywords(x = df_kw$lemma[df_kw$upos %in% c("NOUN", "ADJ")], ngram_max = 3, sep = " ")
+  saveRDS(kw_tr, "study2_textrank.RData")
 
 # Merge back with original data
 df_kw$keyword <- txt_recode_ngram(df_kw$lemma, compound = kw_tr$keywords$keyword, ngram = kw_tr$keywords$ngram, sep = " ")
 
 df_kw$keyword[!df_kw$keyword %in% kw_tr$keywords$keyword] <- NA
   
+# note this time we do not want to apply the dictionary filter. 
 df_analyze <- df_kw[!is.na(df_kw$keyword), ]
-# let op dit misschien in aparte folder opslaan?!
-saveRDS(df_analyze, "study2_beforedict.RData")
+# save the 'cleaned' dataframe
+saveRDS(df_analyze, "study2_analyze_without_dict_filter.RData")
 
+# load dictionary 
+dict <- read_yaml("yaml_dict.txt")
+# check number of obs when dic is applied
+res_cat <- cat_words(df_analyze$keyword, dict, handle_dups = "all")
+  # Check coding issues
+  #res_cat$dup
+  #head(res_cat$unmatched)
+  df_analyze_dict <- merge_df(df_analyze, res_cat$words, "word_coded")
+  saveRDS(df_analyze_dict, "study2_df_analyze.RData")
+  
+# check if corpus consist of same number of documents and unique terms as in paper
+nounbydoc <- df_analyze_dict[, list(freq = .N), by = list(doc_id = doc_id, term = word_coded)]
+number_docs_words2 <- c(docs = length(unique(nounbydoc$doc_id)), words = length(unique(nounbydoc$term)))
 ```
 
