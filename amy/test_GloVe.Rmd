@@ -9,7 +9,7 @@ editor_options:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-Try to apply tutorial on GloVe in R on own data. 
+Try to apply (https://medium.com/broadhorizon-cmotions/nlp-with-r-part-2-training-word-embedding-models-and-visualize-results-ae444043e234)[tutorial] on GloVe in R on own data -> author keywords. 
 
 ```{r}
 # Loading required libraries
