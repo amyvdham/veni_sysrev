@@ -24,7 +24,7 @@ library(ggplot2)
 library(yaml)
 
 # makes it possible to call functions that are saved in separate R script
-source("word_functions.R")
+source("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/word_functions.R")
 #source("circle2.R")
 
 ## Analysis 1:  Author keywords
@@ -38,7 +38,7 @@ source("word_functions.R")
 ## Look at POS tags?
 # reads file which contains the records into an object called recs
 # this is were line 891 in manuscript file starts
-recs <- read.csv("recs_final.csv")
+recs <- read.csv("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/recs_final.csv")
 
 # convert object into data table
 recs <- as.data.table(recs)
@@ -82,7 +82,7 @@ length(unique(df$word))
 
 ## Exclude words
 # create object with the terms that should be excluded  
-exclude_terms <- readLines("exclude_terms.txt")
+exclude_terms <- readLines("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/exclude_terms.txt")
 
 # object with all the row numbers of author keywords that should be excluded from the data frame 
 exclude_these <- unique(unlist(lapply(exclude_terms, grep, x = df$word)))

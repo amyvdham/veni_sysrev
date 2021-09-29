@@ -23,11 +23,11 @@ library(dplyr)
 library(text2vec)
 
 # Loading script containing functions
-source("word_functions.R")
+source("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/word_functions.R")
 
 # prepare data 
 # this is were line 891 in manuscript file starts
-recs <- read.csv("recs_final.csv")
+recs <- read.csv("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/recs_final.csv")
 
 # convert object into data table
 recs <- as.data.table(recs)
@@ -51,7 +51,7 @@ df <- na.omit(df, cols = "word")
 
 ## Exclude words
 # create object with the terms that should be excluded  
-exclude_terms <- readLines("exclude_terms.txt")
+exclude_terms <- readLines("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/exclude_terms.txt")
 
 # object with all the row numbers of author keywords that should be excluded from the data frame 
 exclude_these <- unique(unlist(lapply(exclude_terms, grep, x = df$word)))
