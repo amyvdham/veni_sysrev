@@ -1,0 +1,148 @@
+---
+title: "Compare words from feature extractor with words data frame in manuscript"
+Author: "Amy van der Ham"
+date: "9/29/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load in the csv with the word vector embeddings obtained from the asreview simulation 
+
+```{r}
+# load csv into object 
+dict_wordvecemb <- read.csv("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/asreview_simulation/dict_wordvec.csv", header = FALSE)
+
+# adjust the first column name to word
+colnames(dict_wordvecemb)[1] <- "word"
+
+# check structure of dataframe
+str(dict_wordvecemb)
+
+# remove certain characters from the column V2 which now is column of the type character and contains a string as value. 
+library(tidyverse)
+# create new data frame that can be used for applying adjustments
+df_wordvecemb <- dict_wordvecemb
+
+# remove the [ character from V2 
+df_wordvecemb$V2 <-gsub("\\[","",as.character(df_wordvecemb$V2))
+
+# remove the ] character from V2 
+df_wordvecemb$V2 <-gsub("\\]","",as.character(df_wordvecemb$V2))
+
+# remove the \n character from V2 
+df_wordvecemb$V2 <-gsub("\\\n","",as.character(df_wordvecemb$V2))
+
+# check if removing the characters went correctly 
+df_wordvecemb[1,"V2"]
+# -> yes there are now only numbers (the vectors)
+
+
+# split column V2 into multiple columns
+library(splitstackshape)
+# separate on the space
+df_wordvecemb <- cSplit(df_wordvecemb, "V2", " ")
+
+# retain dimensions of data frame
+dim(df_wordvecemb)
+# -> we have 19,476 words that are defined by 40 dimensions. These dimensions define the context of the words.
+
+# check how many unique words there are
+length(unique(df_wordvecemb$word))
+# -> as expected there are as many unique words as there are observations. 
+
+# rename the column names of the data frame. 
+# First column is named word and the other columns dim1-40
+colnames(df_wordvecemb) <- c("word", paste0("dim", 1:40))
+
+# check if there are any missings
+summary(df_wordvecemb)
+# -> no missing values. 
+```
+
+Study 2: code below shows words that are delete from abstracts before applying 
+```{r}
+# load libraries
+library(stringr)
+library(udpipe)
+library(igraph)
+library(wordcloud)
+library(Matrix)
+library(yaml)
+library(Rmpfr)
+library(topicmodels)
+library(udpipe)
+library(slam)
+library(tidytext)
+library(ggplot2)
+library(textrank)
+library(data.table, quietly = TRUE, warn.conflicts = FALSE)
+source("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/word_functions.R")
+source("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/circle2.R")
+
+recs <- data.table(read.csv("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/recs_final.csv"))
+recs[, "doc" := 1:nrow(recs)]
+
+# convert abstract column to lower case
+recs$AB <- tolower(recs$AB)
+
+# download English udpipe model
+ud_model <- udpipe_download_model(language = "english")
+# load the language model
+ud_model <- udpipe_load_model("english-ewt-ud-2.5-191206.udpipe")
+ud_model <- udpipe_load_model(ud_model$file)
+
+# apply to abstract of recs data table
+udp_res <- udpipe_annotate(ud_model, x = recs$AB, doc_id = recs$doc)
+
+# convert to data table and save as .Rdata
+df <- as.data.table(udp_res)
+saveRDS(df, "study2_df.RData")
+  
+# Keyword extraction ------------------------------------------------------
+
+# Exclude words
+df_kw <- df[upos %in% c("NOUN", "ADJ"), ]
+df_kw <- df_kw[grepl("^[a-zA-Z].", df_kw$lemma), ]
+exclude_terms <- readLines("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/exclude_terms.txt")
+exclude_these <- unique(unlist(lapply(exclude_terms, grep, x = df_kw$lemma)))
+df_kw <- df_kw[-exclude_these, ]
+saveRDS(df_kw, "study2_df_kw.RData")
+
+# Dit is een check  
+# No numeric values
+# all(is.na(as.numeric(df_kw$lemma)))
+# df_kw$lemma[nchar(df_kw$lemma) == 3]
+
+
+kw_tr <- textrank_keywords(x = df_kw$lemma[df_kw$upos %in% c("NOUN", "ADJ")], ngram_max = 3, sep = " ")
+  saveRDS(kw_tr, "study2_textrank.RData")
+
+# Merge back with original data
+df_kw$keyword <- txt_recode_ngram(df_kw$lemma, compound = kw_tr$keywords$keyword, ngram = kw_tr$keywords$ngram, sep = " ")
+
+df_kw$keyword[!df_kw$keyword %in% kw_tr$keywords$keyword] <- NA
+  
+# note this time we do not want to apply the dictionary filter. 
+df_analyze <- df_kw[!is.na(df_kw$keyword), ]
+# save the 'cleaned' dataframe
+saveRDS(df_analyze, "study2_analyze_without_dict_filter.RData")
+
+# load dictionary 
+dict <- read_yaml("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/yaml_dict.txt")
+# check number of obs when dic is applied
+res_cat <- cat_words(df_analyze$keyword, dict, handle_dups = "all")
+  # Check coding issues
+  #res_cat$dup
+  #head(res_cat$unmatched)
+  df_analyze_dict <- merge_df(df_analyze, res_cat$words, "word_coded")
+  saveRDS(df_analyze_dict, "study2_df_analyze.RData")
+  
+# check if corpus consist of same number of documents and unique terms as in paper
+nounbydoc <- df_analyze_dict[, list(freq = .N), by = list(doc_id = doc_id, term = word_coded)]
+number_docs_words2 <- c(docs = length(unique(nounbydoc$doc_id)), words = length(unique(nounbydoc$term)))
+```
