@@ -12,72 +12,14 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-# load and clean data
+# load data frame with word vector embeddings
 ```{r}
-# load csv into object 
-dict_wordvecemb <- read.csv("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/asreview_simulation/dict_wordvec.csv", header = FALSE)
+# load data frame with word vectors into object
+df <- readRDS("featurematrix_asreview.RData")
 
-# adjust the first column name to word
-colnames(dict_wordvecemb)[1] <- "word"
+# transform dataframe for working with tidytext and Rtsne
+embedding_mat <- t(df)
 
-# check structure of dataframe
-str(dict_wordvecemb)
-
-# remove certain characters from the column V2 which now is column of the type 
-# character and contains a string as value. 
-library(tidyverse)
-# create new data frame that can be used for applying adjustments
-df_wordvecemb <- dict_wordvecemb
-
-# remove the [ character from V2 
-df_wordvecemb$V2 <-gsub("\\[","",as.character(df_wordvecemb$V2))
-
-# remove the ] character from V2 
-df_wordvecemb$V2 <-gsub("\\]","",as.character(df_wordvecemb$V2))
-
-# remove the \n character from V2 
-df_wordvecemb$V2 <-gsub("\\\n","",as.character(df_wordvecemb$V2))
-
-# check if removing the characters went correctly 
-df_wordvecemb[1,"V2"]
-# -> yes there are now only numbers (the vectors)
-
-# split column V2 into multiple columns
-library(splitstackshape)
-# separate on the space
-df_wordvecemb <- cSplit(df_wordvecemb, "V2", " ")
-
-# retain dimensions of data frame
-dim(df_wordvecemb)
-# -> we have 19,476 words that are defined by 40 dimensions. These dimensions define the context of the words.
-
-# rename the column names of the data frame. 
-# First column is named word and the other columns dim1-40
-colnames(df_wordvecemb) <- c("word", paste0("dim", 1:40))
-
-# for same reason rename the rownames does not work on the data frame so first convert to matrix
-#  transform data frame to matrix
-mat_wordvecemb <- as.matrix(df_wordvecemb)
-# the first column contains the words so we want to set the row names accordingly
-rownames(mat_wordvecemb) <- mat_wordvecemb[,1]
-# and then remove the first column
-mat_wordvecemb <- mat_wordvecemb[,-1]
-
-# check str of the matrix
-str(mat_wordvecemb)
-
-# convert matrix back to dataframe
-df <- as.data.frame(mat_wordvecemb)
-
-# check structure of this data frame
-str(df)
-
-# change all columns to numeric 
-df[,1:40] <- sapply(df[,1:40],as.numeric)
-
-# see what function t() does when applied on this data frame
-testmat <- t(df)
-str(testmat)
 ```
 
 ```{r}

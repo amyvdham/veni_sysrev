@@ -27,7 +27,7 @@ asreview_results[, c('included', 'asreview_ranking', 'record_id')]
 max(asreview_results$asreview_ranking)
 
 # check to recs file that is used in analysis to compare
-recs <- read.csv("recs_final.csv")
+recs <- read.csv("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/recs_final.csv")
 
 # convert object into data table
 recs <- as.data.table(recs)
