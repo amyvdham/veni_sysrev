@@ -28,6 +28,15 @@ library(superheat)
 ```{r}
 # load data frame with word vectors into object
 df <- readRDS("featurematrix_asreview.RData")
+
+# load data frame with column with selection of words to include in analysis
+df_include <- readRDS("include_these.RData")
+
+# filter the df so that only the words that we want to be included are left
+df_final <- df[df_include$include_these, ]
+
+# drop all words that were in the include these object but not in the data frame
+df_final <- na.omit(df_final)
 ```
 
 Write a function for computing the pairwise cosine similarity between entries in a matrix. 
@@ -60,15 +69,18 @@ CosineSim <- function(X) {
   return(cos)
 }
 ```
-
-# Cluster 1000 random words from the dataframe into meaningful groups.
+# Visualising word clusters for the 1231 words that I preselected (to some extend based on Caspar his pre-selection but without using the dictionary)
+Define/calculate a new cluster similarity matrix that corresponds to the  1231 words. So that we can cluster words into meaningful groups. 
 ```{r}
-# Note that t() is used to transform the dataframe to a matrix
-cosine_similarity <- CosineSim(t(df[c(1:50, 300:350, 600:700, 845:945, 2000:2100, 18550:18700, 5000:5250, 13840:14000, 8000:8032), ]))
+# Note that t() is used to transform the data frame to a matrix
+cosine_similarity <- CosineSim(t(df_final))
 
 # check dimensions
 dim(cosine_similarity)
 ```
+We now want to cluster this cosine similarity matrix.
+
+In order to select the number of clusters, we will choose the number that not only effectively captures distinct groupings, but also has the highest cluster stability (i.e. the same clusters are generated when using sub-samples of the data).
 
 The function below calculates the silhouette width for every data point provided in the cosine.matrix argument based on the clusters provided by the membership argument.
 ```{r}
@@ -139,7 +151,7 @@ data.frame(k = 5:20, width = sil.width) %>%
   geom_point() +
   scale_y_continuous(name = "Avergae silhouette width")
 ```
-Based on the plot the best k seems to be either 5 or 11. 
+Based on the plot the best k seems to be 20. 
 
 # Jaccard Similarity
 Next, for each set of cluster membership pairs (where each membership vector is calculated based on a 90% sub-sample of the data), we want to calculate the Jaccard similarity of the membership vectors.
@@ -214,7 +226,7 @@ Next for each pair of these cluster iterations, we can calculate the Jaccard sim
 library(Rcpp)
 library(reshape2)
 # use Rcpp to speed up the computation
-sourceCpp('code/Rcpp_similarity.cpp')
+sourceCpp('Rcpp_similarity.cpp')
 jaccard.similarity <- sapply(join.cluster.iterations, 
        function(cluster.iteration) {
         sapply(seq(2, ncol(cluster.iteration) - 1, by = 2), 
@@ -231,4 +243,177 @@ jaccard.similarity <- sapply(join.cluster.iterations,
              })
   })
 ```
+We next want to melt jaccard.similarity into a long-form data frame that is easy to manipulate for visualisation.
+```{r}
+# average similarity over simulations
+jaccard.similarity.long <- melt(jaccard.similarity)
+colnames(jaccard.similarity.long) <- c("iter", "k", "similarity")
+# k is the number of clusters
+jaccard.similarity.long$k <- jaccard.similarity.long$k + 4
+jaccard.similarity.long <- jaccard.similarity.long %>% 
+  filter(k <= 20)
+# average over iterations
+jaccard.similarity.avg <- jaccard.similarity.long  %>%
+  group_by(k) %>%
+  summarise_at(.vars = names(.)[3],.funs = c(similarity ="mean"))
+```
 
+Plotting the Jaccard similarity for each k. 
+```{r}
+# plot number of clusters versus Jaccard similarity
+ggplot(jaccard.similarity.long) + 
+  geom_boxplot(aes(x = k, y = similarity, group = k)) +
+  geom_line(aes(x = k, y = similarity), 
+            linetype = "dashed",
+            data = jaccard.similarity.avg) +
+  ggtitle("Jaccard similarity versus k")
+```
+
+# Clustering with 20 clusters
+Having decided that k=20 is an appropriate number of clusters to generate, we use PAM on the full cosine distance matrix (it is easier to provide a dissimilarity matrix than it is to provide a similarity matrix when clustering). Later we will compare the clustering we obtain when we set k=13 so we will compute this too.
+```{r}
+# note that there are some floating point issues in the similarity matrix:
+# some "1" entires are actually sliiightly larger than 1, so we round to 
+# the nearest 10 dp when calcualting the distance matrix
+word.clusters <- pam(acos(round(cosine_similarity, 10)) / pi, k = 20, diss = TRUE)
+word.clusters.13 <- pam(acos(round(cosine_similarity, 10)) / pi, k = 13, diss = TRUE)
+```
+We then define the cluster labels to be the medoid (center) word for that cluster (recall that PAM is like k-means but requires that the center of the cluster is a data point).
+```{r}
+# print the cluster medoids
+word.clusters$medoids
+## [1] "various"       "practitioner"  "emotions"      "valuable"     
+## [5] "aggressive"    "rumination"    "spain"         "multivariable"
+## [9] "relate"        "chd"           "strong"        "family"       
+## [13] "session"       "maladjustment" "parietal"      "common"       
+## [17] "presence"      "greater"       "cronbach"      "neural"    
+
+# convert the membership vector to a factor
+word.membership <- factor(word.clusters$clustering)
+
+# print the cluster medoids
+word.clusters.13$medoids
+## [1] "various"         "practitioner"    "parietal"        "software"       
+## [5] "victimization"   "spain"           "chd"             "strong"         
+## [9] "rumination"      "effective"       "deviation"       "contribution"   
+## [13] "parasympathetic"
+
+# convert the membership vector to a factor
+word.membership.13 <- factor(word.clusters.13$clustering)
+
+# replace integer membership by medoid membership
+levels(word.membership) <- word.clusters$medoids
+# replace integer membership by medoid membership
+levels(word.membership.13) <- word.clusters.13$medoids
+```
+
+Next, we compare an example of clustering with k=20 and k=13. For the most part, we are curious about which clusters would be forced to split into two or more clusters.Below we plot a superheatmap displaying the proportion of words in each cluster that are the same.
+
+NOTE: IN THE EXAMPLE THE USE 11 AND 12 AS K NOT SURE IF BIGGER DISTANT BETWEEN THE 2 K VALUES INFLUENCE WHAT I HAVE DONE BELOW.
+```{r}
+# compare the membership vectors with 20 and 13 clusters
+word.membership.split <- split(word.membership, word.membership)
+word.membership.split.13 <- split(word.membership.13, word.membership.13)
+compare.20.13 <- sapply(word.membership.split, function(i) {
+  sapply(word.membership.split.13, function(j) {
+    sum(names(i) %in% names(j)) / length(i)
+  })
+})
+
+superheat(compare.20.13, 
+          heat.pal = c("white", "grey", "black"),
+          heat.pal.values = c(0, 0.1, 1),
+          column.title = "20 clusters",
+          row.title = "13 clusters",
+          bottom.label.text.angle = 90,
+          bottom.label.size = 0.4)
+```
+# Plotting a clustered superheatmap with silhouette plot
+
+Next, we can calculate the cosine silhouette width for each word. We will plot this above the columns of our superheatmap.
+```{r}
+# calculate the cosine silhouette width
+cosine.silhouette <- 
+  cosineSilhouette(cosine_similarity, word.membership)
+# arrange the words in the same order as the original matrix
+rownames(cosine.silhouette) <- cosine.silhouette$word
+cosine.silhouette <- cosine.silhouette[rownames(cosine_similarity), ]
+```
+Next, we want to order the clusters in order of average silhouette width.
+```{r}
+# calculate the average width for each cluster
+avg.sil.width <- cosine.silhouette %>% 
+  group_by(membership) %>% 
+  summarise(avg.width = mean(width)) %>% 
+  arrange(avg.width)
+# add a blank space after each word (for aesthetic purposes)
+word.membership.padded <- paste0(word.membership, " ")
+# reorder levels based on increasing separation
+word.membership.padded <- factor(word.membership.padded, 
+                          levels = paste0(avg.sil.width$membership, " "))
+```
+We are now ready to plot a clustered superheatmap:
+
+THIS CODE IS NOT WORKING
+```{r}
+superheat(cosine_similarity, 
+          
+          # row and column clustering
+          membership.rows = word.membership.padded,
+          membership.cols = word.membership.padded,
+          
+          # top plot: silhouette
+          yt = cosine.silhouette$width,
+          yt.axis.name = "Cosine\nsilhouette\nwidth",
+          yt.plot.type = "bar",
+          yt.bar.col = "grey35",
+          
+          # order of rows and columns within clusters
+          order.rows = order(cosine.silhouette$width),
+          order.cols = order(cosine.silhouette$width),
+          
+          # bottom labels
+          bottom.label.col = c("grey95", "grey80"),
+          bottom.label.text.angle = 90,
+          bottom.label.text.alignment = "right",
+          bottom.label.size = 0.28,
+          
+          # left labels
+          left.label.col = c("grey95", "grey80"),
+          left.label.text.alignment = "right",
+          left.label.size = 0.26,
+          
+          # smooth heatmap within clusters
+          smooth.heat = T,
+          
+          # title
+          title = "(b)")
+```
+# Cluster word clouds
+Lastly, we produce some word clouds to identify the members of each cluster. The function below produces a word cloud for a specific word cluster.
+```{r}
+library(RColorBrewer)
+library(wordcloud)
+# define a function that takes the cluster name and the membership vector 
+# and returns a word cloud
+makeWordCloud <- function(cluster, word.membership, words.freq) {
+  words <- names(word.membership[word.membership == cluster])
+  words.freq <- words.freq[words]
+  # make all words black except for the cluster center
+  words.col <- rep("black", length = length(words.freq))
+  words.col[words == cluster] <- "red"
+  # the size of the words will be the frequency from the NY Times headlines
+  wordcloud(words, words.freq, colors = words.col, 
+            ordered.colors = TRUE, random.order = FALSE, max.words = 80)
+}
+```
+In each word cloud, the cluster center is in red, and the size corresponds to the word frequency from the NY Times headlines. It is thus interesting to notice that oftentimes the cluster center has fairly low frequency.
+```{r}
+# plot word clouds
+set.seed(52545)
+for (word in levels(word.membership)) {
+  makeWordCloud(word, word.membership, words.freq = freq)
+}
+```
+
+DIT LAATSTE WERKT NIET WANT WORD.MEMBERSHIP is gewoon alleen een factor dus bevat niet de column freq of iets. CODE nog even goed checken. Heeft misschien met de . te maken? 
