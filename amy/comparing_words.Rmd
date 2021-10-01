@@ -92,7 +92,7 @@ recs$AB <- tolower(recs$AB)
 
 # download English udpipe model
 ud_model <- udpipe_download_model(language = "english")
-# load the language model
+# load the language model - NOTE that this is a more recent version than the one Caspar used. 
 ud_model <- udpipe_load_model("english-ewt-ud-2.5-191206.udpipe")
 ud_model <- udpipe_load_model(ud_model$file)
 
@@ -113,12 +113,13 @@ exclude_these <- unique(unlist(lapply(exclude_terms, grep, x = df_kw$lemma)))
 df_kw <- df_kw[-exclude_these, ]
 saveRDS(df_kw, "study2_df_kw.RData")
 
+
 # Dit is een check  
 # No numeric values
 # all(is.na(as.numeric(df_kw$lemma)))
 # df_kw$lemma[nchar(df_kw$lemma) == 3]
 
-
+# textrank is used for identifying more meaningful units of analysis
 kw_tr <- textrank_keywords(x = df_kw$lemma[df_kw$upos %in% c("NOUN", "ADJ")], ngram_max = 3, sep = " ")
   saveRDS(kw_tr, "study2_textrank.RData")
 
@@ -127,11 +128,13 @@ df_kw$keyword <- txt_recode_ngram(df_kw$lemma, compound = kw_tr$keywords$keyword
 
 df_kw$keyword[!df_kw$keyword %in% kw_tr$keywords$keyword] <- NA
   
-# note this time we do not want to apply the dictionary filter. 
+# NOTE this time we do not want to apply the dictionary filter. 
 df_analyze <- df_kw[!is.na(df_kw$keyword), ]
 # save the 'cleaned' dataframe
 saveRDS(df_analyze, "study2_analyze_without_dict_filter.RData")
 
+####
+# Also run it with applying dictionary filter. So I can look at what happens and what the differences are. 
 # load dictionary 
 dict <- read_yaml("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/yaml_dict.txt")
 # check number of obs when dic is applied
@@ -146,3 +149,81 @@ res_cat <- cat_words(df_analyze$keyword, dict, handle_dups = "all")
 nounbydoc <- df_analyze_dict[, list(freq = .N), by = list(doc_id = doc_id, term = word_coded)]
 number_docs_words2 <- c(docs = length(unique(nounbydoc$doc_id)), words = length(unique(nounbydoc$term)))
 ```
+Since I have already once run the code above once, I can now just call the saved R.Data files. 
+
+```{r}
+# WITHOUT DICT FILTER APPLIED
+# load the pre-processed file (without dict filter)
+df_paper <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/study2_analyze_without_dict_filter.RData")
+
+# check number of unique words and doc_id
+length(unique(df_paper$keyword))
+length(unique(df_paper$doc_id))
+# -> 17584 unique words (or more precisely word units)
+
+# check number of unique words and number of unique documents and also add a term frequency per doc column 
+nounbydoc1 <- df_paper[, list(freq = .N), by = list(doc_id = doc_id, term = keyword)]
+
+# check if that went correctly 
+count(df_paper$doc_id == 3228 & df_paper$keyword == "conflict mental health")
+# this gives 5 and that is also the freq give in the datafram nounbydoc1, so went correctly. 
+
+# which terms occur in more than 6 documents
+library(dplyr)
+df_morethan6 <-  nounbydoc1 %>% group_by(term) %>% filter(n()>6) 
+
+length(unique(df_morethan6$term))
+length(unique(df_morethan6$doc_id))
+
+### WITH DICT FILTER APPLIED
+# load the preprocessed file (with dict filter)
+df_paperdict <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/study2_df_analyze.RData")
+
+# check number of unique words and number of unique documents and add term freq per doc column 
+nounbydoc2 <- df_paperdict[, list(freq = .N), by = list(doc_id = doc_id, term = word_coded)]
+
+length(unique(nounbydoc2$doc_id))
+length(unique(nounbydoc2$term))
+# -> note that it does not concern unique words but unique word units. 
+
+# which terms occur in more than 6 documents
+df_mt6 <-  nounbydoc2 %>% group_by(term) %>% filter(n()>6) #
+length(unique(df_mt6$term))
+length(unique(df_mt6$doc_id))
+```
+
+# Create filter that can be applied on dataframe with word embeddings to decide which words to keep. 
+```{r}
+library(splitstackshape)
+# Make sure that there are only unigrams
+# separate on the space
+df_paper2 <- cSplit(df_paper, "keyword", " ")
+
+# create data frame with only doc_id and keyword columns
+dat <- df_paper2[ , c("doc_id", "keyword_1", "keyword_2", "keyword_3")]
+
+# create new data frame in which keyword columns are stacked
+library(reshape2)
+dat2 <- melt(dat, id.vars=1)
+dat2
+
+dat2 <- na.omit(dat2)
+# check number of unique words and number of unique documents unigrams and add column with term freq per doc
+nounbydoc3 <- dat2[, list(freq = .N), by = list(doc_id = doc_id, term = value)]
+
+# check number of unique words and documents. 
+length(unique(nounbydoc3$doc_id)) 
+length(unique(nounbydoc3$term)) 
+
+# how many times do terms occur in the dataframe
+df3_mt6 <-nounbydoc3 %>% group_by(term) %>% filter(n()>6) #
+length(unique(df3_mt6$term))
+length(unique(df3_mt6$doc_id))
+
+# create a dataframe with one column including the unique terms
+include_these <- unique(df3_mt6$term)
+include_these <- as.data.table(include_these)
+
+saveRDS(include_these, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/include_these.RData")
+```
+
