@@ -64,6 +64,7 @@ summary(df_wordvecemb)
 # -> no missing values. 
 ```
 
+## RUN ONCE
 Study 2: code below shows words that are delete from abstracts before applying 
 ```{r}
 # load libraries
@@ -106,13 +107,15 @@ saveRDS(df, "study2_df.RData")
 # Keyword extraction ------------------------------------------------------
 
 # Exclude words
+# make sure to only include nouns and adjectives. 
 df_kw <- df[upos %in% c("NOUN", "ADJ"), ]
+# make sure to only include strings that start with a letter. (. -> and end with any character?)
 df_kw <- df_kw[grepl("^[a-zA-Z].", df_kw$lemma), ]
+# exclude methodological terms and similar non-substantive words
 exclude_terms <- readLines("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/exclude_terms.txt")
 exclude_these <- unique(unlist(lapply(exclude_terms, grep, x = df_kw$lemma)))
 df_kw <- df_kw[-exclude_these, ]
 saveRDS(df_kw, "study2_df_kw.RData")
-
 
 # Dit is een check  
 # No numeric values
@@ -120,6 +123,7 @@ saveRDS(df_kw, "study2_df_kw.RData")
 # df_kw$lemma[nchar(df_kw$lemma) == 3]
 
 # textrank is used for identifying more meaningful units of analysis
+# DO NOT UNDERSTAND WHY upos %in% c("NOUN", "ADJ") line is applied again here because I thought this was already used to create df_kw. 
 kw_tr <- textrank_keywords(x = df_kw$lemma[df_kw$upos %in% c("NOUN", "ADJ")], ngram_max = 3, sep = " ")
   saveRDS(kw_tr, "study2_textrank.RData")
 
@@ -149,6 +153,7 @@ res_cat <- cat_words(df_analyze$keyword, dict, handle_dups = "all")
 nounbydoc <- df_analyze_dict[, list(freq = .N), by = list(doc_id = doc_id, term = word_coded)]
 number_docs_words2 <- c(docs = length(unique(nounbydoc$doc_id)), words = length(unique(nounbydoc$term)))
 ```
+## START HERE!!
 Since I have already once run the code above once, I can now just call the saved R.Data files. 
 
 ```{r}
@@ -161,7 +166,7 @@ length(unique(df_paper$keyword))
 length(unique(df_paper$doc_id))
 # -> 17584 unique words (or more precisely word units)
 
-# check number of unique words and number of unique documents and also add a term frequency per doc column 
+# create data frame with column doc_id term and add a term frequency per doc column column 
 nounbydoc1 <- df_paper[, list(freq = .N), by = list(doc_id = doc_id, term = keyword)]
 
 # check if that went correctly 
@@ -179,9 +184,10 @@ length(unique(df_morethan6$doc_id))
 # load the preprocessed file (with dict filter)
 df_paperdict <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/study2_df_analyze.RData")
 
-# check number of unique words and number of unique documents and add term freq per doc column 
+# create data frame with column doc_id term and add a term frequency per doc column column 
 nounbydoc2 <- df_paperdict[, list(freq = .N), by = list(doc_id = doc_id, term = word_coded)]
 
+# check number of unique words and number of unique documents
 length(unique(nounbydoc2$doc_id))
 length(unique(nounbydoc2$term))
 # -> note that it does not concern unique words but unique word units. 
@@ -193,6 +199,7 @@ length(unique(df_mt6$doc_id))
 ```
 
 # Create filter that can be applied on dataframe with word embeddings to decide which words to keep. 
+Here I work with the dataframe on which the textrank algorithm is already applied which means I have to bring the word backs to unigrams. I have however also created a filter called include_these2 later on in which I use a dataframe on which the textrank algorithme is not applied yet. -> This makes more sense because then I do not have to bring them back to unigrams. 
 ```{r}
 library(splitstackshape)
 # Make sure that there are only unigrams
@@ -208,15 +215,15 @@ dat2 <- melt(dat, id.vars=1)
 dat2
 
 dat2 <- na.omit(dat2)
-# check number of unique words and number of unique documents unigrams and add column with term freq per doc
+# create data frame with column doc_id term and add a term frequency per doc column column 
 nounbydoc3 <- dat2[, list(freq = .N), by = list(doc_id = doc_id, term = value)]
 
-# check number of unique words and documents. 
+# check number of unique words and number of unique documents unigrams 
 length(unique(nounbydoc3$doc_id)) 
 length(unique(nounbydoc3$term)) 
 
 # how many times do terms occur in the dataframe
-df3_mt6 <-nounbydoc3 %>% group_by(term) %>% filter(n()>6) #
+df3_mt6 <- nounbydoc3 %>% group_by(term) %>% filter(n()>6) #
 length(unique(df3_mt6$term))
 length(unique(df3_mt6$doc_id))
 
@@ -225,5 +232,87 @@ include_these <- unique(df3_mt6$term)
 include_these <- as.data.table(include_these)
 
 saveRDS(include_these, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/include_these.RData")
+```
+
+# FILTER FOR CLUSTERING
+Do the same as before but now only with the filter that is applied in the official manuscript until textrank. Because textrank concerns the bi - and trigrams. 
+
+Things that are applied: 
+- to lower
+- udpipe ("english"): (stopwords, POS, stemming, nouns and adjectives)
+- include only strings that start with a letter
+- exclusion filter (removing methodological terms and similar non-substantive words)
+
+Might want to consider not applying the final filter but fine for now I think. 
+
+
+```{r}
+# WITHOUT TEXTRANK ALGORITHM APPLIED
+# load the pre-processed file (without textrank algorithm dict filter having been applied)
+df_include <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/study2_df_kw.RData")
+
+# check number of unique words and doc_id
+length(unique(df_include$token))
+length(unique(df_include$doc_id))
+# -> 16499 unique tokens
+
+# check difference between tokens and lemma's
+diff <- df_include[df_include$token != df_include$lemma, ]
+# -> looking at the manuscript we want to continue with the lemma column and not the token column. 
+
+# check number of unique words 
+length(unique(df_include$lemma))
+# -> 15274 unique words
+
+# check if there are only nouns and adj in this dataframe
+unique(df_include$upos)
+# -> yes.
+
+# create data frame with column doc_id term and add a term frequency per doc column column
+nounbydoc4<- df_include[, list(freq = .N), by = list(doc_id = doc_id, term = lemma)]
+
+# check number of unique words and documents. 
+length(unique(nounbydoc4$doc_id)) 
+length(unique(nounbydoc4$term)) 
+
+# create a data frame with one column including the unique terms
+include_these2 <- unique(nounbydoc4$term)
+include_these2 <- as.data.table(include_these2)
+
+saveRDS(include_these2, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/include_these2.RData")
+```
+
+# Check manuscript
+Figuring out what happens with the piece of code under Keyword extraction (Exclude words till textrank) in manuscript.
+```{r}
+# check data frame before exclusion filter is applied
+df_bf_ex <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/study2_df.RData")
+
+# check number of unique words
+length(unique(df_bf_ex$lemma))
+# 25535 words 
+
+# only select nouns and adjectives
+df_ex <- df_bf_ex[upos %in% c("NOUN", "ADJ"), ]
+
+# check number of unique words
+length(unique(df_ex$lemma))
+# -> 16311: 9224 unique words dropped
+
+# makes sure that only strings that start with a letter are included. (. -> and end with any character?)
+df_ex1 <- df_ex[grepl("^[a-zA-Z].", df_ex$lemma), ]
+
+# check number of unique words
+length(unique(df_ex1$lemma))
+# -> 15515: 796 unique words dropped 
+
+# excludes methodological terms and similar non-substantive words
+exclude_terms <- readLines("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/exclude_terms.txt")
+exclude_these <- unique(unlist(lapply(exclude_terms, grep, x = df_ex1$lemma)))
+df_ex2 <- df_ex1[-exclude_these, ]
+
+# check number of unique words
+length(unique(df_ex2$lemma))
+# -> 15274: 241 unique words dropped. 
 ```
 
