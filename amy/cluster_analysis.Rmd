@@ -28,24 +28,55 @@ df <- readRDS("featurematrix_asreview.RData")
 df_include <- readRDS("include_these2.RData")
 
 # filter the df so that only the words that we want to be included are left
-df_final <- df[df_include$include_these, ]
-
+df_final <- df[df_include$include_these2, ] 
+           
 # check how many NA's there are 
 summary(df_final)
 sum(is.na(df_final$dim2))
-# -> we see that there are 2554 rows with a missing val
+# -> we see that there are 2554 rows with a missing value
 
 # drop all words that were in the include these object but not in the word embedding data frame
-df_final1 <- na.omit(df_final)
+df_final <- na.omit(df_final)
 # number of observations makes sense 15274 (words that can be include) - 2554 (number of missings (not in the feature matrix of those 15274 include_these words)) = 12720 observations 
-length(unique(rownames(df_final1)))
+length(unique(rownames(df_final)))
 
 # check words that should be included but are not in the data frame with the words embeddings and therefore lost. 
-df_lost <- subset(df_include, !(include_these2 %in% rownames(df_final1)))
+df_lost <- subset(df_include, !(include_these2 %in% rownames(df_final)))
 # -> you would expect this number of observations to be 2554 and not 3268....
+# this makes sense now i think about it, there are 3268 words in included that are not in df_final. There are 714 words that are not in the included data frame but are part of the df final -> see if I can get an expression that can show me that.  
 
-# check which of these words in that are in df_lost but are also in df_final1
-df_mismatch <- df_final1[df_lost$include_these2, ]
+12720+2554=15274
+12006+3268=15274
+
+# excluded: words that are in df_final but should have not been since they are not in the included dataframe 
+excluded <- subset(df_final, !(rownames(df_final) %in% df_include$include_these2))
+
+# Check kept
+df_kept <- subset(df_include, include_these2 %in% rownames(df_final))
+# different than number than in df_final, this is the number we would have wanted in df_final -> see test_subset on how to achieve this desired result. 
+
+# for this following line it makes sense that the number of obs. is 3268
+df_lost2 <- subset(df_include, !(include_these2 %in% rownames(df)))
+
+# words that are not in test_subset but also not in df_final: total 2554:
+
+missing_final <- subset(df_lost, include_these2 %in% rownames(df_final))
+
+df_lost2 <- subset(df_include, !(include_these2 %in% rownames(df)))
+
+test_subset <- subset(df, rownames(df) %in% df_include$include_these2)
+
+
+# check which of these words in that are in df_lost but are also in df_final1 -> so were words that were included in df_final but we did not expect them to because they were not in df_include. 
+df_mismatch <- df_final[df_lost$include_these2, ]
+df_mismatch <- na.omit(df_mismatch)
+
+# The reason for this 2554 vs. 3268 is that in the way I have filtered right now to create df_final, if the word is "lyric" or "diabete" in df_included and the rowname is "lyrics" or "diabetes" in df than this word will still be included in df_final (even though the word does not match exactly)
+
+# check if we substract the number of mismatches from the number of df_lost if we come to the number of missings that were dropped in df_final 
+length(unique(df_lost$include_these2)) - length(unique(row.names(df_mismatch)))
+# NO we do not -> answer is 2565 and not 2554.... -> Means that there are still 11 words in df_final that are not df_include which we do not know and therefore also do not know the reason for why they are still included. 
+
 
 # other way to check words that are not included
 # feature matrix df with column words
@@ -56,15 +87,32 @@ df_check$words <- row.names(df_check)
 df_add <- df_include
 names(df_add)[names(df_add) == 'include_these2'] <- 'words'
 
-# add column mismatch in which a row gets a value 0 if the word of that row is in the feature matrix data frame but not in the include(add) data frame. 
-df_check$mismatch <- ifelse(df_check$words %in% df_add$words, 1, 0)
-
-summary(as.factor(df_check$mismatch))
-
-
-df_check$mismatch2 <- ifelse(df_check$words %in% rownames(df_final1), 1, 0)
-
-df_check[df_check$mismatch == 0 & df_check$words %in% rownames(df_final1), "words"]
+# DEFINITELY CORRECT: NOT WORKING WITH THE ROWNAMES.
+# add column mismatch2 in which a row gets a value 0 if the word of that row is in the feature matrix data frame but not in the include(add) data frame. 
+df_check$mismatch2 <- ifelse(df_check$words %in% df_add$words, 1, 0)
 
 summary(as.factor(df_check$mismatch2))
+# 12006 of the words in the feature matrix match with the words that are in the included filter. This means that there are 3268 words left in the included filter that are not in the feature matrix (15274 (number of words that were in the included filter) - 12006 = 3268, this is in line with what we saw earlier on in the df_lost data frame.) 
+
+## THIS BELOW STILL DOES NOT MAKE SENSE: MAYBE BECAUSE I AM WORKING WITH THE ROW NAMES INCORRECTLY? 
+# This gives a value of 1 to the words that are in the feature matrix and also in df final
+df_check$match <- ifelse(df_check$words %in% rownames(df_final), 1, 0)
+
+df_match <- subset(df_check, (words %in% rownames(df_final)))
+# Number of observations in df_match is 12635, I would expect this to be 12720....
+
+summary(as.factor(df_check$match))
+# would expect 1 to have 12720 observations, which is not the case. 
+
+mismatches <- df_check[df_check$mismatch2 == 0 & df_check$match == 1, ]
 ```
+Temporarily solution 
+For now I will just create the following solution:
+```{r}
+# test subset
+test_subset <- subset(df, rownames(df) %in% df_include$include_these2)
+# -> this seems to work, gives 12006 observations  however I now see that there are still stopwords in this file.... Will check comparison file to see why this is the case and if I can remove them.
+```
+
+# CLUSTER ANALYSIS
+For the cluster analysis I will use df_final because here the least words are deleted. Even though this means that there are some words that are included that are not exactly in the included filter (since a shorter version of the word is in the included filter it might be include these words anyway.)
