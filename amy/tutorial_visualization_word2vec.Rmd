@@ -33,7 +33,7 @@ df <- readRDS("featurematrix_asreview.RData")
 df_include <- readRDS("include_these.RData")
 
 # filter the df so that only the words that we want to be included are left
-df_final <- df[df_include$include_these, ]
+df_final <- df[df_include$include_these2, ]
 
 # drop all words that were in the include these object but not in the data frame
 df_final <- na.omit(df_final)
