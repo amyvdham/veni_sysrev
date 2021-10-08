@@ -20,6 +20,13 @@ library(devtools)
 ```
 
 # load data frame with word vector embeddings
+Notes: df_final has 714 observations (see excluded) that you would have expect to been dropped because they are not in df_included. However because some sort of version of the words is in there they are included. For example "lyric" in df_included is "lyrics" in df_final.
+
+I have also made a data frame which really only includes the words that are also exactly in df_included (see final_correct)
+
+df_lost is a data frame which contains all the words that are dropped from df_included (and are therefore not in test_subset)
+
+Most important part for the codes below are CHECK 1 and FINAL CORRECT
 ```{r}
 # load data frame with word vectors into object
 df <- readRDS("featurematrix_asreview.RData")
@@ -40,6 +47,7 @@ df_final <- na.omit(df_final)
 # number of observations makes sense 15274 (words that can be include) - 2554 (number of missings (not in the feature matrix of those 15274 include_these words)) = 12720 observations 
 length(unique(rownames(df_final)))
 
+# CHECK 1
 # check words that should be included but are not in the data frame with the words embeddings and therefore lost. 
 df_lost <- subset(df_include, !(include_these2 %in% rownames(df_final)))
 # -> you would expect this number of observations to be 2554 and not 3268....
@@ -50,34 +58,37 @@ df_lost <- subset(df_include, !(include_these2 %in% rownames(df_final)))
 
 # excluded: words that are in df_final but should have not been since they are not in the included dataframe 
 excluded <- subset(df_final, !(rownames(df_final) %in% df_include$include_these2))
+# Note 12006 + 714 = 12720 
 
 # Check kept
 df_kept <- subset(df_include, include_these2 %in% rownames(df_final))
-# different than number than in df_final, this is the number we would have wanted in df_final -> see test_subset on how to achieve this desired result. 
+# different than number than in df_final, this is the number we would have wanted in df_final -> see final_correct on how to achieve this desired result. 
 
 # for this following line it makes sense that the number of obs. is 3268
 df_lost2 <- subset(df_include, !(include_these2 %in% rownames(df)))
 
-# words that are not in test_subset but also not in df_final: total 2554:
-
-missing_final <- subset(df_lost, include_these2 %in% rownames(df_final))
-
-df_lost2 <- subset(df_include, !(include_these2 %in% rownames(df)))
-
-test_subset <- subset(df, rownames(df) %in% df_include$include_these2)
-
-
-# check which of these words in that are in df_lost but are also in df_final1 -> so were words that were included in df_final but we did not expect them to because they were not in df_include. 
-df_mismatch <- df_final[df_lost$include_these2, ]
-df_mismatch <- na.omit(df_mismatch)
-
 # The reason for this 2554 vs. 3268 is that in the way I have filtered right now to create df_final, if the word is "lyric" or "diabete" in df_included and the rowname is "lyrics" or "diabetes" in df than this word will still be included in df_final (even though the word does not match exactly)
 
-# check if we substract the number of mismatches from the number of df_lost if we come to the number of missings that were dropped in df_final 
-length(unique(df_lost$include_these2)) - length(unique(row.names(df_mismatch)))
-# NO we do not -> answer is 2565 and not 2554.... -> Means that there are still 11 words in df_final that are not df_include which we do not know and therefore also do not know the reason for why they are still included. 
+# check if we substract the number of excluded from the number of df_lost if we come to the number of missings that were dropped in df_final 
+length(unique(df_lost$include_these2)) - length(unique(row.names(excluded)))
+# YES, the answer is 2554, the number of missings in df_final
+
+# CHECK 2
+# words that are not in test_subset but also not in df_final: total 2554:
+# -> do not know how to figure this out yet. You want to know which words are assigned NA in df_final. Of 3268 - 714 but this is hard because this 714 are not actually in those 3268 but some version of the word. 
 
 
+# check which of these words in that are in df_lost but are also in df_final1 -> so were words that were included in df_final but we did not expect them to because they were not in df_include. (The correct way for finding these is done in for the excluded dataframe. But kept this code in here as well because I want to know the reason why it does not work this way.)
+df_mismatch <- df_final[df_lost$include_these2, ]
+df_mismatch <- na.omit(df_mismatch)
+# You would expect 714 observations here but for some reason the number of observations is 703. Code below tries to figure out why, but do not get to a clear conclusion. 
+same <- subset(excluded, rownames(excluded) %in% rownames(df_mismatch))
+
+left <- subset(excluded, !(rownames(excluded) %in% rownames(df_mismatch)))
+# 85 + 629 = 714. This does not explain to me however why there are 703 observations in mismatch 
+
+
+## CHECK 3
 # other way to check words that are not included
 # feature matrix df with column words
 df_check <- df
@@ -105,12 +116,13 @@ summary(as.factor(df_check$match))
 # would expect 1 to have 12720 observations, which is not the case. 
 
 mismatches <- df_check[df_check$mismatch2 == 0 & df_check$match == 1, ]
+# here we get that value of 629 again..
 ```
 Temporarily solution 
-For now I will just create the following solution:
+For now I will just create the following solution in which only the words that are exactly in df_included are in final_correct. Later I might want to check with applying stemming before or after filtering on feature matrix. Because it would be nice if those words such of the example "lyric" "lyrics" but also examples of "data." not being included whereas "data" is in the feature matrix. Therefore I would have to adjust the filter include_these in the other file. If I have done this. Then I would want to use the code below for selecting the words to be included from the feature matrix. 
 ```{r}
-# test subset
-test_subset <- subset(df, rownames(df) %in% df_include$include_these2)
+# FINAL CORRECT
+final_correct <- subset(df, rownames(df) %in% df_include$include_these2)
 # -> this seems to work, gives 12006 observations  however I now see that there are still stopwords in this file.... Will check comparison file to see why this is the case and if I can remove them.
 ```
 
