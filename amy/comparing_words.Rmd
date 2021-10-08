@@ -324,6 +324,8 @@ length(unique(df_ex2$lemma))
 
 # Apply more filters.
 Stopwords removal + removal of dots, numbers and maybe also removal of - or splitting words on -. Finally I might also want to consider to apply stemming after using the filter on the feature matrix. But this is something I will look into later. 
+
+# LEMMA
 ```{r}
 # first I want to load in a file that still contains the upos column to see if the stopwords have been assignent NOUN or ADJ. On this file all filters have been applied until textrank algorith. So this is the file that has been used to create include_these2. On this file we want to apply more filters (mentioned above) before saving it as include_these3.
 df_check <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/study2_df_kw.RData")
@@ -350,13 +352,98 @@ length(unique(clean_df$lemma))
 # -> 15002: 272 unique words dropped 
 
 # double check if the word "and" is removed from the file
-clean_df[clean_df$lemma == "and", c("lemma", "doc_id")]
+clean_df[clean_df$lemma == "and", c("token", "lemma", "doc_id")]
 # -> it is. 
 
 # REMOVE TERMS THAT HAVE A NUMBER
 # check if term with number is on the df
-clean_df[clean_df$lemma == "rmsea=.046", c("lemma", "doc_id")]
+clean_df[clean_df$lemma == "rmsea=.046", c("token", "lemma", "doc_id")]
 # -> yes it is. 
+
+# apply filter that removes terms that contain a digit. 
+clean_df <- clean_df %>%
+  filter(!str_detect(lemma, "[:digit:]"))
+
+# check if filter went correctly 
+clean_df[clean_df$lemma == "rmsea=.046", c("token", "lemma", "doc_id")]
+# this term is not in the dataframe anymore, so filter went correctly. 
+
+# check number of unique words after removing words with digits
+length(unique(clean_df$lemma))
+# -> 14691: 311 unique words dropped.
+
+# REMOVE DOTS FROM STRING VALUES IN LEMMA COLUMN
+# check if the word "data." is in the file.
+clean_df[clean_df$lemma == "data.", c("token", "lemma", "doc_id")]
+# -> yes it is. 
+
+# Check number of observations before applying filter on terms. We want the number of observations to stay the same because we are not removing words, we are only removing part parts of the words.
+nrow(clean_df)
+# -> 353958
+
+# remove dots from string values in lemma column 
+clean_df$lemma <- gsub("\\.","",clean_df$lemma)
+
+# remove dots from string values in token column 
+clean_df$token <- gsub("\\.","",clean_df$token)
+          
+# check if filter went correctly 
+clean_df[clean_df$lemma == "data.", c("token", "lemma", "doc_id")]
+
+# check if filter went correctly 
+clean_df[clean_df$lemma == "data", c("token", "lemma", "doc_id")]
+# "data." is not in the dataframe anymore and "data" is so filter went correctly 
+
+# check number of unique words after removing dots. Should be the same as before. 
+length(unique(clean_df$lemma))
+# -> 14471: 220 unique words dropped. It could be that some of the words were in there with a . and without, so this will reduce the number of unique words if we remove dots. 
+
+# also check unique number of tokens
+length(unique(clean_df$token))
+# -> 15632
+
+# check if number of observations is still the same 
+nrow(clean_df)
+# -> 353958: this is still the same as before, which shows it went correctly. 
+```
+
+# THIS NOT NEEEEDED!! NEEDS TO BE CHECKED. SOME MIGHT BE NEEDED AS FOR SOME REASON NUMBERS CHANGES A BIT WHEN SEPARATKY APPLIED ON TOKEN COLUMN BUT SHOULD NOT BE BECAUSE if removing lemma' with numbers are deleted, these tokens are automaticly also delted. It could be that there are token stopwords or token words with numbers that for some reason are different than the lemma and that therefore the numbers do not correspond. 
+
+# Do need to apply the removal of points on token column, have done added this in the chunk above. 
+
+# NEED TO ADD COMMENTS 
+# TOKEN
+Apply same code above on token instead of lemma
+```{r}
+# check which value is assigned to the word "in" in the upos column. For some reason the column token does not contain the word "and"
+clean_df[clean_df$token == "in", c("token", "lemma", "upos")]
+# we see that the word "" is assigned NOUN  
+
+# -> because there are also other stopwords in there that might have been assigned noun or adj in the upos column and are therefore still included I will have to apply an extra filter that removes the stopwords. This makes sense because some stopwords can indeed be a noun or adj. 
+
+# check number of unique words before applying more filters
+length(unique(clean_df$token))
+# 16499
+
+# REMOVING STOPWORDS.
+# use stopwords from tidytext. 
+library(tidyverse)
+library(tidytext)
+clean_df <- clean_df %>%
+  anti_join(stop_words, by= c("token" = "word"))
+
+# check number of unique words after removing stop words
+length(unique(clean_df$token))
+# -> 15855: no words dropped because arleady cleaned out with lemma filter applied. 
+
+# double check if the word "in" is removed from the file
+clean_df[clean_df$token == "in", c("token", "lemma", "doc_id")]
+# -> it is. 
+
+# REMOVE TERMS THAT HAVE A NUMBER
+# check if term with number is in the df
+clean_df[clean_df$token == "rmsea=.046", c("token", "lemma", "doc_id")]
+# -> already cleaned out with lemma filter!! 
 
 # apply filter that removes terms that contain a digit. 
 clean_df <- clean_df %>%
@@ -372,26 +459,28 @@ length(unique(clean_df$lemma))
 
 # REMOVE DOTS FROM STRING VALUES IN LEMMA COLUMN
 # check if the word "data." is in the file.
-clean_df[clean_df$lemma == "data.", c("lemma", "doc_id")]
-# -> yes it is. 
+clean_df[clean_df$token == "data.", c("token", "lemma", "doc_id")]
+# -> yes it still is. 
 
 # Check number of observations before applying filter on terms. We want the number of observations to stay the same because we are not removing words, we are only removing part parts of the words.
 nrow(clean_df)
 # -> 353958
 
 # remove dots from string values in lemma column 
-clean_df$lemma <- gsub("\\.","",clean_df$lemma)
+clean_df$token <- gsub("\\.","",clean_df$token)
+
+
           
 # check if filter went correctly 
-clean_df[clean_df$lemma == "data.", c("lemma", "doc_id")]
+clean_df[clean_df$token == "data.", c("token", "lemma", "doc_id")]
 
 # check if filter went correctly 
-clean_df[clean_df$lemma == "data", c("lemma", "doc_id")]
+clean_df[clean_df$token == "data", c("token", "lemma", "doc_id")]
 # "data." is not in the dataframe anymore and "data" is so filter went correctly 
 
 # check number of unique words after removing dots. Should be the same as before. 
-length(unique(clean_df$lemma))
-# -> 14471: 220 unique words dropped. It could be that some of the words were in there with a . and without, so this will reduce the number of unique words if we remove dots. 
+length(unique(clean_df$token))
+# -> 15603: 220 unique words dropped. It could be that some of the words were in there with a . and without, so this will reduce the number of unique words if we remove dots. 
 
 # also check unique number of tokens
 length(unique(clean_df$token))
@@ -399,7 +488,7 @@ length(unique(clean_df$token))
 
 # check if number of observations is still the same 
 nrow(clean_df)
-# -> 353958: this is still the same as before, which shows it went correctly. 
+# -> 353958: this is still the same as before, which shows it went correctly.
 ```
 
 Not that the needed filters have been applied create a file with terms to include. Note that I make one with the tokens (so before stemming/lemmatization) and with the lemma column (so before stemming/lemmatization). 
