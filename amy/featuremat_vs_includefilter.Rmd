@@ -1,0 +1,130 @@
+---
+title: "Cluster analysis"
+Author: "Amy van der Ham"
+date: "10/7/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# load libraries
+library(dplyr)
+library(cluster)
+library(ggplot2)
+library(devtools)
+```
+
+# load data frame with word vector embeddings
+Notes: df_final has 714 observations (see excluded) that you would have expect to been dropped because they are not in df_included. However because some sort of version of the words is in there they are included. For example "lyric" in df_included is "lyrics" in df_final.
+
+I have also made a data frame which really only includes the words that are also exactly in df_included (see final_correct)
+
+df_lost is a data frame which contains all the words that are dropped from df_included (and are therefore not in test_subset)
+
+Most important part for the codes below are CHECK 1 and FINAL CORRECT
+```{r}
+# load data frame with word vectors into object
+df <- readRDS("featurematrix_asreview.RData")
+
+# load data frame with column with selection of words to include in analysis
+df_include <- readRDS("include_these2.RData")
+
+# filter the df so that only the words that we want to be included are left
+df_final <- df[df_include$include_these2, ] 
+           
+# check how many NA's there are 
+summary(df_final)
+sum(is.na(df_final$dim2))
+# -> we see that there are 2554 rows with a missing value
+
+# drop all words that were in the include these object but not in the word embedding data frame
+df_final <- na.omit(df_final)
+# number of observations makes sense 15274 (words that can be include) - 2554 (number of missings (not in the feature matrix of those 15274 include_these words)) = 12720 observations 
+length(unique(rownames(df_final)))
+
+# CHECK 1
+# check words that should be included but are not in the data frame with the words embeddings and therefore lost. 
+df_lost <- subset(df_include, !(include_these2 %in% rownames(df_final)))
+# -> you would expect this number of observations to be 2554 and not 3268....
+# this makes sense now i think about it, there are 3268 words in included that are not in df_final. There are 714 words that are not in the included data frame but are part of the df final -> see if I can get an expression that can show me that.  
+
+12720+2554=15274
+12006+3268=15274
+
+# excluded: words that are in df_final but should have not been since they are not in the included dataframe 
+excluded <- subset(df_final, !(rownames(df_final) %in% df_include$include_these2))
+# Note 12006 + 714 = 12720 
+
+# Check kept
+df_kept <- subset(df_include, include_these2 %in% rownames(df_final))
+# different than number than in df_final, this is the number we would have wanted in df_final -> see final_correct on how to achieve this desired result. 
+
+# for this following line it makes sense that the number of obs. is 3268
+df_lost2 <- subset(df_include, !(include_these2 %in% rownames(df)))
+
+# The reason for this 2554 vs. 3268 is that in the way I have filtered right now to create df_final, if the word is "lyric" or "diabete" in df_included and the rowname is "lyrics" or "diabetes" in df than this word will still be included in df_final (even though the word does not match exactly)
+
+# check if we substract the number of excluded from the number of df_lost if we come to the number of missings that were dropped in df_final 
+length(unique(df_lost$include_these2)) - length(unique(row.names(excluded)))
+# YES, the answer is 2554, the number of missings in df_final
+
+# CHECK 2
+# words that are not in test_subset but also not in df_final: total 2554:
+# -> do not know how to figure this out yet. You want to know which words are assigned NA in df_final. Of 3268 - 714 but this is hard because this 714 are not actually in those 3268 but some version of the word. 
+
+
+# check which of these words in that are in df_lost but are also in df_final1 -> so were words that were included in df_final but we did not expect them to because they were not in df_include. (The correct way for finding these is done in for the excluded dataframe. But kept this code in here as well because I want to know the reason why it does not work this way.)
+df_mismatch <- df_final[df_lost$include_these2, ]
+df_mismatch <- na.omit(df_mismatch)
+# You would expect 714 observations here but for some reason the number of observations is 703. Code below tries to figure out why, but do not get to a clear conclusion. 
+same <- subset(excluded, rownames(excluded) %in% rownames(df_mismatch))
+
+left <- subset(excluded, !(rownames(excluded) %in% rownames(df_mismatch)))
+# 85 + 629 = 714. This does not explain to me however why there are 703 observations in mismatch 
+
+
+## CHECK 3
+# other way to check words that are not included
+# feature matrix df with column words
+df_check <- df
+df_check$words <- row.names(df_check)
+
+# include dataframe change column name to words
+df_add <- df_include
+names(df_add)[names(df_add) == 'include_these2'] <- 'words'
+
+# DEFINITELY CORRECT: NOT WORKING WITH THE ROWNAMES.
+# add column mismatch2 in which a row gets a value 0 if the word of that row is in the feature matrix data frame but not in the include(add) data frame. 
+df_check$mismatch2 <- ifelse(df_check$words %in% df_add$words, 1, 0)
+
+summary(as.factor(df_check$mismatch2))
+# 12006 of the words in the feature matrix match with the words that are in the included filter. This means that there are 3268 words left in the included filter that are not in the feature matrix (15274 (number of words that were in the included filter) - 12006 = 3268, this is in line with what we saw earlier on in the df_lost data frame.) 
+
+## THIS BELOW STILL DOES NOT MAKE SENSE: MAYBE BECAUSE I AM WORKING WITH THE ROW NAMES INCORRECTLY? 
+# This gives a value of 1 to the words that are in the feature matrix and also in df final
+df_check$match <- ifelse(df_check$words %in% rownames(df_final), 1, 0)
+
+df_match <- subset(df_check, (words %in% rownames(df_final)))
+# Number of observations in df_match is 12635, I would expect this to be 12720....
+
+summary(as.factor(df_check$match))
+# would expect 1 to have 12720 observations, which is not the case. 
+
+mismatches <- df_check[df_check$mismatch2 == 0 & df_check$match == 1, ]
+# here we get that value of 629 again..
+```
+Temporarily solution 
+For now I will just create the following solution in which only the words that are exactly in df_included are in final_correct. Later I might want to check with applying stemming before or after filtering on feature matrix. Because it would be nice if those words such of the example "lyric" "lyrics" but also examples of "data." not being included whereas "data" is in the feature matrix. Therefore I would have to adjust the filter include_these in the other file. If I have done this. Then I would want to use the code below for selecting the words to be included from the feature matrix. 
+```{r}
+# FINAL CORRECT
+final_correct <- subset(df, rownames(df) %in% df_include$include_these2)
+# -> this seems to work, gives 12006 observations  however I now see that there are still stopwords in this file.... Will check comparison file to see why this is the case and if I can remove them.
+```
+
+# CLUSTER ANALYSIS
+For the cluster analysis I will use df_final because here the least words are deleted. Even though this means that there are some words that are included that are not exactly in the included filter (since a shorter version of the word is in the included filter it might be include these words anyway.)
