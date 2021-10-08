@@ -1,5 +1,5 @@
 ---
-title: "Cluster analysis"
+title: "Feature Matrix vs. Include Filter"
 Author: "Amy van der Ham"
 date: "10/7/2021"
 output: html_document
@@ -19,7 +19,6 @@ library(ggplot2)
 library(devtools)
 ```
 
-# load data frame with word vector embeddings
 Notes: df_final has 714 observations (see excluded) that you would have expect to been dropped because they are not in df_included. However because some sort of version of the words is in there they are included. For example "lyric" in df_included is "lyrics" in df_final.
 
 I have also made a data frame which really only includes the words that are also exactly in df_included (see final_correct)
@@ -27,6 +26,8 @@ I have also made a data frame which really only includes the words that are also
 df_lost is a data frame which contains all the words that are dropped from df_included (and are therefore not in test_subset)
 
 Most important part for the codes below are CHECK 1 and FINAL CORRECT
+
+# load data frame with word vector embeddings
 ```{r}
 # load data frame with word vectors into object
 df <- readRDS("featurematrix_asreview.RData")
