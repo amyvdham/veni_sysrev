@@ -256,13 +256,16 @@ length(unique(df_include$token))
 length(unique(df_include$doc_id))
 # -> 16499 unique tokens
 
+# check number of unique words 
+length(unique(df_include$lemma))
+# -> 15274 unique words
+
+
 # check difference between tokens and lemma's
 diff <- df_include[df_include$token != df_include$lemma, ]
 # -> looking at the manuscript we want to continue with the lemma column and not the token column. 
 
-# check number of unique words 
-length(unique(df_include$lemma))
-# -> 15274 unique words
+length(unique(diff$token))
 
 # check if there are only nouns and adj in this dataframe
 unique(df_include$upos)
@@ -292,6 +295,9 @@ df_bf_ex <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_
 length(unique(df_bf_ex$lemma))
 # 25535 words 
 
+# check different part of speech values 
+unique(df_bf_ex$upos)
+
 # only select nouns and adjectives
 df_ex <- df_bf_ex[upos %in% c("NOUN", "ADJ"), ]
 
@@ -314,5 +320,121 @@ df_ex2 <- df_ex1[-exclude_these, ]
 # check number of unique words
 length(unique(df_ex2$lemma))
 # -> 15274: 241 unique words dropped. 
+```
+
+# Apply more filters.
+Stopwords removal + removal of dots, numbers and maybe also removal of - or splitting words on -. Finally I might also want to consider to apply stemming after using the filter on the feature matrix. But this is something I will look into later. 
+```{r}
+# first I want to load in a file that still contains the upos column to see if the stopwords have been assignent NOUN or ADJ. On this file all filters have been applied until textrank algorith. So this is the file that has been used to create include_these2. On this file we want to apply more filters (mentioned above) before saving it as include_these3.
+df_check <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/study2_df_kw.RData")
+
+# check which value is assigned to the word "and" in the upos column. 
+df_check[df_check$lemma == "and", c("lemma", "upos")]
+# we see that the word "and" is assigned NOUN where as you would expect this to be a conjunction. 
+
+# -> because there are also other stopwords in there that might have been assigned noun or adj in the upos column and are therefore still included I will have to apply an extra filter that removes the stopwords. This makes sense because despite the word "and" is not some stopwords can indeed be a noun or adj. 
+
+# check number of unique words before applying more filters
+length(unique(df_check$lemma))
+# 15274
+
+# REMOVING STOPWORDS.
+# use stopwords from tidytext. 
+library(tidyverse)
+library(tidytext)
+clean_df <- df_check %>%
+  anti_join(stop_words, by= c("lemma" = "word"))
+
+# check number of unique words after removing stop words
+length(unique(clean_df$lemma))
+# -> 15002: 272 unique words dropped 
+
+# double check if the word "and" is removed from the file
+clean_df[clean_df$lemma == "and", c("lemma", "doc_id")]
+# -> it is. 
+
+# REMOVE TERMS THAT HAVE A NUMBER
+# check if term with number is on the df
+clean_df[clean_df$lemma == "rmsea=.046", c("lemma", "doc_id")]
+# -> yes it is. 
+
+# apply filter that removes terms that contain a digit. 
+clean_df <- clean_df %>%
+  filter(!str_detect(token, "[:digit:]"))
+
+# check if filter went correctly 
+clean_df[clean_df$lemma == "rmsea=.046", c("lemma", "doc_id")]
+# this term is not in the dataframe anymore, so filter went correctly. 
+
+# check number of unique words after removing words with digits
+length(unique(clean_df$lemma))
+# -> 14691: 311 unique words dropped.
+
+# REMOVE DOTS FROM STRING VALUES IN LEMMA COLUMN
+# check if the word "data." is in the file.
+clean_df[clean_df$lemma == "data.", c("lemma", "doc_id")]
+# -> yes it is. 
+
+# Check number of observations before applying filter on terms. We want the number of observations to stay the same because we are not removing words, we are only removing part parts of the words.
+nrow(clean_df)
+# -> 353958
+
+# remove dots from string values in lemma column 
+clean_df$lemma <- gsub("\\.","",clean_df$lemma)
+          
+# check if filter went correctly 
+clean_df[clean_df$lemma == "data.", c("lemma", "doc_id")]
+
+# check if filter went correctly 
+clean_df[clean_df$lemma == "data", c("lemma", "doc_id")]
+# "data." is not in the dataframe anymore and "data" is so filter went correctly 
+
+# check number of unique words after removing dots. Should be the same as before. 
+length(unique(clean_df$lemma))
+# -> 14471: 220 unique words dropped. It could be that some of the words were in there with a . and without, so this will reduce the number of unique words if we remove dots. 
+
+# also check unique number of tokens
+length(unique(clean_df$token))
+# -> 15877
+
+# check if number of observations is still the same 
+nrow(clean_df)
+# -> 353958: this is still the same as before, which shows it went correctly. 
+```
+
+Not that the needed filters have been applied create a file with terms to include. Note that I make one with the tokens (so before stemming/lemmatization) and with the lemma column (so before stemming/lemmatization). 
+
+*NOTE*: I have not done anything yet with - signs in the words.
+
+
+```{r}
+# SAVE INCLUDE_TOKEN
+# create data frame with column doc_id term and add a term frequency per doc column column
+nounbydoc5<- clean_df[, list(freq = .N), by = list(doc_id = doc_id, term = token)]
+
+# check number of unique words and documents. 
+length(unique(nounbydoc5$doc_id)) 
+length(unique(nounbydoc5$term)) 
+
+# create a data frame with one column including the unique terms
+include_token <- unique(nounbydoc5$term)
+include_token <- as.data.table(include_token)
+
+saveRDS(include_token, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/include_token.RData")
+
+
+# SAVE INCLUDE_LEMMA
+# create data frame with column doc_id term and add a term frequency per doc column column
+nounbydoc6<- clean_df[, list(freq = .N), by = list(doc_id = doc_id, term = lemma)]
+
+# check number of unique words and documents. 
+length(unique(nounbydoc6$doc_id)) 
+length(unique(nounbydoc6$term)) 
+
+# create a data frame with one column including the unique terms
+include_lemma <- unique(nounbydoc6$term)
+include_lemma <- as.data.table(include_lemma)
+
+saveRDS(include_lemma, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/include_lemma.RData")
 ```
 
