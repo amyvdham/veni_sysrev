@@ -19,7 +19,7 @@ library(ggplot2)
 library(devtools)
 ```
 
-
+# LOADING FEATURE MATRIX AND APPLYING FILTER
 ```{r}
 # load data frame with word vectors into object
 df <- readRDS("featurematrix_asreview.RData")
@@ -49,7 +49,114 @@ conclusionshealthy for example is a lost term however bith conclusions and healt
 
 # STEMMING TRY-OUT
 ```{r}
+df_stem <- final_token 
+df_stem$words <- row.names(df_stem)
 
+library(SnowballC)
+df_stem <- df_stem %>%
+  mutate(stem_words = wordStem(words))
+
+# check difference in unique number of words before and after stemming
+length(unique(df_stem$words))
+# 14088
+length(unique(df_stem$stem_words))
+# 10268 -> means that there are 3820 less words when stemming is applied. 
+
+# create feature matrix that can be used for clustering analysis with unique stemmming words
+# problem here is that words that will have the same stem_words will have slightly different vector embedding because the original word is different even though their stem_words is identical 
+df_stem[df_stem$stem_words == "abnorm", ]
+```
+For now I will apply the cluster analysis on the feature matrix final_token 
+
+# CLUSTER ANALYSIS
+```{r}
+# libraries
+library(tidyverse)
+library(tidytext)
+# Required library for GloVe
+library(text2vec)
+
+# transpose the matrix
+asr_embedding_test <- t(final_token)
+str(asr_embedding)
+# the str is as followed: num [1:40, 1:14088], however we want it to be like this  num [1:14088, 1:40] for the lines below to work. This is because the function t() transposes the rows and columns, it rotates the data.frame so that the rows become the columns and the columns become the rows. The result of the t() command is always a matrix object.
+
+# just applying as.matrix seems to work. See below:
+asr_embedding <- as.matrix(final_token)
+str(final_token)
+
+# With the 40 dimenisions, calculate the L2 (Euclidean distance) between words and find out which words are close to for example children, mothers, or sex. 
+# wat ligt er dicht bij 'children'
+word <- asr_embedding["children", , drop = FALSE] 
+cos_sim = sim2(x = asr_embedding, y = word, method = "cosine", norm = "l2")
+head(sort(cos_sim[,1], decreasing = TRUE), 10)
+
+# wat ligt er dicht bij 'sex'
+word <- asr_embedding["sex", , drop = FALSE] 
+cos_sim = sim2(x = asr_embedding, y = word, method = "cosine", norm = "l2")
+head(sort(cos_sim[,1], decreasing = TRUE), 10)
+
+# wat ligt er dicht bij 'boys'
+word <- asr_embedding["boys", , drop = FALSE] 
+cos_sim = sim2(x = asr_embedding, y = word, method = "cosine", norm = "l2")
+head(sort(cos_sim[,1], decreasing = TRUE), 10)
+
+# wat ligt er dicht bij 'mothers'
+word <- asr_embedding["mothers", , drop = FALSE] 
+cos_sim = sim2(x = asr_embedding, y = word, method = "cosine", norm = "l2")
+head(sort(cos_sim[,1], decreasing = TRUE), 15)
+```
+
+# VISUALIZATION WITH UMAP
+Do the embeddings from asreview clearly show us that (with this technique: word2vec/doc2vec is used in asreview) we are able to cluster words together that have the same semantic meaning? 
+```{r}
+# load library
+library(uwot)
+# dimension reduction
+asr_umap <- umap(asr_embedding, n_components = 2, metric = "cosine", n_neighbors = 25, min_dist = 0.1, spread=2)
+
+# Dimensions of end result
+dim(asr_umap)
+
+# Put results in a dataframe for ggplot
+df_asr_umap <- as.data.frame(asr_umap, stringsAsFactors = FALSE)
+
+# Add the labels of the words to the dataframe
+df_asr_umap$word <- rownames(asr_embedding)
+colnames(df_asr_umap) <- c("UMAP1", "UMAP2", "word")
+df_asr_umap$technique <- 'Word2Vec'
+cat(paste0('Our Word2Vec embedding reduced to 2 dimensions:', '\n'))
+str(df_asr_umap)
+
+# Plot the UMAP dimensions 
+ggplot(df_asr_umap) +
+      geom_point(aes(x = UMAP1, y = UMAP2), colour = 'blue', size = 0.05) +
+      labs(title = "Word embedding in 2D using UMAP") +
+      theme(plot.title = element_text(hjust = .5, size = 14))
+
+# Plot the right bottom part of the word embedding with labels
+ggplot(df_asr_umap[df_asr_umap$UMAP1 > 2.0 & df_asr_umap$UMAP1 < 3.0 & df_asr_umap$UMAP2 < -4.6,]) +
+      geom_point(aes(x = UMAP1, y = UMAP2), colour = 'blue', size = 2) +
+      geom_text(aes(UMAP1, UMAP2, label = word), size = 2.5, vjust=-1, hjust=0) +
+      labs(title = "Word embedding in 2D using UMAP - partial view") +
+      theme(plot.title = element_text(hjust = .5, size = 14))
+
+# Plot the word embedding of words that are related for the GloVe model
+word <- asr_embedding["mothers", , drop = FALSE] 
+cos_sim = sim2(x = asr_embedding, y = word, method = "cosine", norm = "l2")
+select <- data.frame(rownames(as.data.frame(head(sort(cos_sim[,1], decreasing = TRUE), 25))))
+colnames(select) <- "word"
+selected_words <- df_asr_umap %>% inner_join(y=select, by= "word", match = "all") 
+
+# The ggplot visual for Word2Vec
+mothers_plot <- ggplot(selected_words, aes(x = UMAP1, y = UMAP2, colour = word == 'mothers')) + 
+      geom_point(show.legend = FALSE) + 
+      scale_color_manual(values = c('black', 'red')) +
+      geom_text(aes(UMAP1, UMAP2, label = word), show.legend = FALSE, size = 2.5, vjust=-1.5, hjust=0) +
+      labs(title = "ASR word embedding of words related to 'mothers'") +
+      theme(plot.title = element_text(hjust = .5, size = 14))
+
+mothers_plot
 ```
 
 
