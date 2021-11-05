@@ -1,0 +1,236 @@
+---
+title: "Preprocces data before applying filter on embedding"
+Author: "Amy van der Ham"
+date: "11/05/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## RUN ONCE
+Code below shows the pre-processing that has been done in the original manuscript. I follow the same steps but do no run the text rank algorithm and do not apply the dictionary filter. 
+
+Things that are applied: 
+- to lower
+- udpipe ("english"): (stopwords, POS, stemming, nouns and adjectives)
+- include only strings that start with a letter
+- exclusion filter (removing methodological terms and similar non-substantive words)
+
+```{r}
+# load libraries
+library(stringr)
+library(udpipe)
+library(igraph)
+library(wordcloud)
+library(Matrix)
+library(yaml)
+library(Rmpfr)
+library(topicmodels)
+library(udpipe)
+library(slam)
+library(tidytext)
+library(ggplot2)
+library(textrank)
+library(data.table, quietly = TRUE, warn.conflicts = FALSE)
+source("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/word_functions.R")
+source("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/circle2.R")
+
+recs <- data.table(read.csv("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/recs_final.csv"))
+recs[, "doc" := 1:nrow(recs)]
+
+# convert abstract column to lower case
+recs$AB <- tolower(recs$AB)
+
+# download English udpipe model
+ud_model <- udpipe_download_model(language = "english")
+# load the language model - NOTE that this is a different (more recent) version than the one Caspar used. 
+ud_model <- udpipe_load_model("english-ewt-ud-2.5-191206.udpipe")
+ud_model <- udpipe_load_model(ud_model$file)
+
+# apply to abstract of recs data table
+udp_res <- udpipe_annotate(ud_model, x = recs$AB, doc_id = recs$doc)
+
+# convert to data table and save as .Rdata
+df <- as.data.table(udp_res)
+saveRDS(df, "study2_df.RData")
+  
+# Keyword extraction ------------------------------------------------------
+
+# Exclude words
+# make sure to only include nouns and adjectives. 
+df_kw <- df[upos %in% c("NOUN", "ADJ"), ]
+# make sure to only include strings that start with a letter. (. -> and end with any character?)
+df_kw <- df_kw[grepl("^[a-zA-Z].", df_kw$lemma), ]
+# exclude methodological terms and similar non-substantive words
+exclude_terms <- readLines("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/exclude_terms.txt")
+exclude_these <- unique(unlist(lapply(exclude_terms, grep, x = df_kw$lemma)))
+df_kw <- df_kw[-exclude_these, ]
+saveRDS(df_kw, "study2_df_kw.RData")
+```
+
+## START HERE
+Since I have already once run the code above once, I can now just call the saved R.Data files. Note that the R.Data files might differ from the once in the original manuscript due to the udpipe being a different version.
+
+
+# CREATE FILTER FOR CLUSTERING
+Apply more pre - processing steps. 
+  - Remove stopwords
+  - Remove numbers from the string values in the token en lemma column
+  - Remove dots from the string values in the token en lemma column
+  - Split the string values in the token en lemma column at - 
+
+```{r}
+# load the manuscript pre-processed file (without textrank algorithm and dict filter having been applied)
+df_check <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/study2_df_kw.RData")
+
+# check number of unique words before applying more filters
+length(unique(df_check$lemma))
+# 15274
+
+# REMOVING STOPWORDS.
+# use stopwords from tidytext. 
+library(tidyverse)
+library(tidytext)
+clean_df <- df_check %>%
+  anti_join(stop_words, by= c("lemma" = "word"))
+
+# check number of unique words after removing stop words
+length(unique(clean_df$lemma))
+# -> 15002: 272 unique words dropped 
+
+# double check if the word "and" is removed from the file
+clean_df[clean_df$lemma == "and", c("token", "lemma", "doc_id")]
+# -> it is. 
+
+# REMOVE TERMS THAT HAVE A NUMBER
+# check if term with number is on the df
+clean_df[clean_df$lemma == "rmsea=.046", c("token", "lemma", "doc_id")]
+# -> yes it is. 
+
+# apply filter that removes terms that contain a digit. 
+clean_df <- clean_df %>%
+  filter(!str_detect(lemma, "[:digit:]"))
+
+# check if filter went correctly 
+clean_df[clean_df$lemma == "rmsea=.046", c("token", "lemma", "doc_id")]
+# this term is not in the dataframe anymore, so filter went correctly. 
+
+# check number of unique words after removing words with digits
+length(unique(clean_df$lemma))
+# -> 14691: 311 unique words dropped.
+
+# REMOVE DOTS FROM STRING VALUES IN LEMMA AND TOKEN COLUMN
+# check if the word "data." is in the file.
+clean_df[clean_df$lemma == "data.", c("token", "lemma", "doc_id")]
+# -> yes it is. 
+
+# check number of unique tokens before applying the next filter
+length(unique(clean_df$token))
+# -> 15877
+
+# Check number of observations before applying filter on terms. We want the number of observations to stay the same because we are not removing words, we are only removing part parts of the words.
+nrow(clean_df)
+# -> 353958
+
+# remove dots from string values in lemma column 
+clean_df$lemma <- gsub("\\.","",clean_df$lemma)
+
+# remove dots from string values in token column 
+clean_df$token <- gsub("\\.","",clean_df$token)
+          
+# check if filter went correctly 
+clean_df[clean_df$lemma == "data.", c("token", "lemma", "doc_id")]
+
+# check if filter went correctly 
+clean_df[clean_df$lemma == "data", c("token", "lemma", "doc_id")]
+# "data." is not in the dataframe anymore and "data" is so filter went correctly 
+
+# check number of unique words after removing dots. Should be the same as before. 
+length(unique(clean_df$lemma))
+# -> 14471: 220 unique (lemma) words dropped. It could be that some of the words were in there with a . and without, so this will reduce the number of unique words if we remove dots. 
+
+length(unique(clean_df$token))
+
+# also check unique number of tokens
+length(unique(clean_df$token))
+# -> 15632: 254 unique (token) words dropped.
+
+# check if number of observations is still the same 
+nrow(clean_df)
+# -> 353958: this is still the same as before, which shows it went correctly. 
+
+# REMOVE - FROM STRING VALUES IN LEMMA and TOKEN COLUMN
+# check if the word "non-clinical" is in the file.
+clean_df[clean_df$lemma == "non-clinical", c("token", "lemma", "doc_id")]
+# -> yes it is. 
+
+# Check number of observations before applying filter on terms. We want the number of observations to stay the same because we are not removing words, we are only removing part parts of the words.
+nrow(clean_df)
+# -> 353958
+
+# remove - from string values in lemma column 
+clean_df$lemma <- gsub("\\-","",clean_df$lemma)
+
+# remove - from string values in token column 
+clean_df$token <- gsub("\\-","",clean_df$token)
+          
+# check if filter went correctly 
+clean_df[clean_df$lemma == "non-clinical", c("token", "lemma", "doc_id")]
+
+# check if filter went correctly 
+clean_df[clean_df$lemma == "nonclinical", c("token", "lemma", "doc_id")]
+# "non-clinical" is not in the dataframe anymore and "nonclinical" is so filter went correctly 
+
+# check number of unique words after removing -. Should be the same as before. 
+length(unique(clean_df$lemma))
+# -> 14195: 276 unique (lemma) words dropped. It could be that some of the words were in there with a - and without, so this will reduce the number of unique words if we remove -. 
+
+# also check unique number of tokens
+length(unique(clean_df$token))
+# -> 15343: 289 unique (token) words dropped
+
+# check if number of observations is still the same 
+nrow(clean_df)
+# -> 353958: this is still the same as before, which shows it went correctly. 
+```
+
+
+Now that the needed filters have been applied I  create a file with terms to include. 
+
+*NOTE*: I make one a filter with the token column and one with the lemma column. 
+
+
+```{r}
+# SAVE INCLUDE_TOKEN
+# create data frame with column doc_id term and add a term frequency per doc column column
+nounbydoc5<- clean_df[, list(freq = .N), by = list(doc_id = doc_id, term = token)]
+
+# check number of unique words and documents. 
+length(unique(nounbydoc5$doc_id)) 
+length(unique(nounbydoc5$term)) 
+
+# create a data frame with one column including the unique terms
+include_token <- unique(nounbydoc5$term)
+include_token <- as.data.table(include_token)
+
+saveRDS(include_token, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/include_token.RData")
+
+
+# SAVE INCLUDE_LEMMA
+# create data frame with column doc_id term and add a term frequency per doc column column
+nounbydoc6<- clean_df[, list(freq = .N), by = list(doc_id = doc_id, term = lemma)]
+
+# check number of unique words and documents. 
+length(unique(nounbydoc6$doc_id)) 
+length(unique(nounbydoc6$term)) 
+
+# create a data frame with one column including the unique terms
+include_lemma <- unique(nounbydoc6$term)
+include_lemma <- as.data.table(include_lemma)
+
+saveRDS(include_lemma, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/include_lemma.RData")
+```
