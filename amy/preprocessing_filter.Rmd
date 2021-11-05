@@ -153,6 +153,7 @@ length(unique(df_check$token))
 # 16499
 
 # add token_filter column to dataframe so we keep the original column and filter can be applied on the new column. 
+df_check <- select(df_check, -filter_lemma)
 df_check$filter_token <- df_check$token
 
 # REMOVING STOPWORDS.
