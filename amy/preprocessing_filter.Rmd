@@ -79,10 +79,14 @@ Since I have already once run the code above once, I can now just call the saved
 # CREATE FILTER FOR CLUSTERING
 Apply more pre - processing steps. 
   - Remove stopwords
-  - Remove numbers from the string values in the token en lemma column
-  - Remove dots from the string values in the token en lemma column
-  - Split the string values in the token en lemma column at - 
+  - Split the string values at - 
+  - Split the string values at /
+  - Remove non-alphanumeric characters 
+  - Remove numbers 
 
+*NOTE*: I apply these filters on both the lemma and token column separatly. 
+
+## LEMMA ##
 ```{r}
 # load the manuscript pre-processed file (without textrank algorithm and dict filter having been applied)
 df_check <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/study2_df_kw.RData")
@@ -91,146 +95,144 @@ df_check <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_
 length(unique(df_check$lemma))
 # 15274
 
+# add lemma_filter column to dataframe so we keep the original column and filter can be applied on the new column. 
+df_check$filter_lemma <- df_check$lemma
+
 # REMOVING STOPWORDS.
 # use stopwords from tidytext. 
 library(tidyverse)
 library(tidytext)
-clean_df <- df_check %>%
-  anti_join(stop_words, by= c("lemma" = "word"))
+lemma_clean <- df_check %>%
+  anti_join(stop_words, by= c("filter_lemma" = "word"))
+# Note that the stopwords are removed from the dataset so this also effects the original column. 
 
 # check number of unique words after removing stop words
-length(unique(clean_df$lemma))
+length(unique(lemma_clean$filter_lemma))
 # -> 15002: 272 unique words dropped 
 
-# double check if the word "and" is removed from the file
-clean_df[clean_df$lemma == "and", c("token", "lemma", "doc_id")]
-# -> it is. 
+# SPLIT AT - 
+library(splitstackshape)
+# Split words in lemma column on the - 
+lemma_clean <- cSplit(lemma_clean, "filter_lemma", "-", direction = "long")
 
-# REMOVE TERMS THAT HAVE A NUMBER
-# check if term with number is on the df
-clean_df[clean_df$lemma == "rmsea=.046", c("token", "lemma", "doc_id")]
-# -> yes it is. 
+# check results by looking at a term that contains - in original lemma column on which the filter has not been applied. 
+lemma_clean[lemma_clean$lemma == "non-risk", c("lemma", "filter_lemma", "doc_id")]
 
-# apply filter that removes terms that contain a digit. 
-clean_df <- clean_df %>%
-  filter(!str_detect(lemma, "[:digit:]"))
+# SPLIT AT /
+# Split words in lemma column on the /
+lemma_clean <- cSplit(lemma_clean, "filter_lemma", "/", direction = "long")
 
-# check if filter went correctly 
-clean_df[clean_df$lemma == "rmsea=.046", c("token", "lemma", "doc_id")]
-# this term is not in the dataframe anymore, so filter went correctly. 
+# check results by looking at term that contains / in original lemma column on which the filter has not been applied. 
+lemma_clean[lemma_clean$lemma == "police/judicial", c("lemma", "filter_lemma", "doc_id")]
 
-# check number of unique words after removing words with digits
-length(unique(clean_df$lemma))
-# -> 14691: 311 unique words dropped.
+# REMOVE NON-ASCII CHARACTERS 
+# remove all the non-alphanumeric characters from words in lemma column
+lemma_clean$filter_lemma <- str_replace_all(lemma_clean$filter_lemma, "[^[:alnum:]]", "")
 
-# REMOVE DOTS FROM STRING VALUES IN LEMMA AND TOKEN COLUMN
-# check if the word "data." is in the file.
-clean_df[clean_df$lemma == "data.", c("token", "lemma", "doc_id")]
-# -> yes it is. 
+# check results by looking at term that contains a non-ASCII character in original lemma column on which the filter has not been applied. 
+lemma_clean[lemma_clean$lemma == "p=.47", c("lemma", "filter_lemma", "doc_id")]
 
-# check number of unique tokens before applying the next filter
-length(unique(clean_df$token))
-# -> 15877
+# remove all the digit characters from words in lemma column
+lemma_clean$filter_lemma <- gsub("[0-9]+" ,"", lemma_clean$filter_lemma)
 
-# Check number of observations before applying filter on terms. We want the number of observations to stay the same because we are not removing words, we are only removing part parts of the words.
-nrow(clean_df)
-# -> 353958
+# check results by looking at term that contains a number in the original lemma column on which the filter has not been applied. 
+lemma_clean[lemma_clean$lemma == "p=.47", c("lemma", "filter_lemma", "doc_id")]
 
-# remove dots from string values in lemma column 
-clean_df$lemma <- gsub("\\.","",clean_df$lemma)
+# check number of unique words after applying more filters
+length(unique(lemma_clean$filter_lemma))
+# 13711
 
-# remove dots from string values in token column 
-clean_df$token <- gsub("\\.","",clean_df$token)
-          
-# check if filter went correctly 
-clean_df[clean_df$lemma == "data.", c("token", "lemma", "doc_id")]
-
-# check if filter went correctly 
-clean_df[clean_df$lemma == "data", c("token", "lemma", "doc_id")]
-# "data." is not in the dataframe anymore and "data" is so filter went correctly 
-
-# check number of unique words after removing dots. Should be the same as before. 
-length(unique(clean_df$lemma))
-# -> 14471: 220 unique (lemma) words dropped. It could be that some of the words were in there with a . and without, so this will reduce the number of unique words if we remove dots. 
-
-length(unique(clean_df$token))
-
-# also check unique number of tokens
-length(unique(clean_df$token))
-# -> 15632: 254 unique (token) words dropped.
-
-# check if number of observations is still the same 
-nrow(clean_df)
-# -> 353958: this is still the same as before, which shows it went correctly. 
-
-# REMOVE - FROM STRING VALUES IN LEMMA and TOKEN COLUMN
-# check if the word "non-clinical" is in the file.
-clean_df[clean_df$lemma == "non-clinical", c("token", "lemma", "doc_id")]
-# -> yes it is. 
-
-# Check number of observations before applying filter on terms. We want the number of observations to stay the same because we are not removing words, we are only removing part parts of the words.
-nrow(clean_df)
-# -> 353958
-
-# remove - from string values in lemma column 
-clean_df$lemma <- gsub("\\-","",clean_df$lemma)
-
-# remove - from string values in token column 
-clean_df$token <- gsub("\\-","",clean_df$token)
-          
-# check if filter went correctly 
-clean_df[clean_df$lemma == "non-clinical", c("token", "lemma", "doc_id")]
-
-# check if filter went correctly 
-clean_df[clean_df$lemma == "nonclinical", c("token", "lemma", "doc_id")]
-# "non-clinical" is not in the dataframe anymore and "nonclinical" is so filter went correctly 
-
-# check number of unique words after removing -. Should be the same as before. 
-length(unique(clean_df$lemma))
-# -> 14195: 276 unique (lemma) words dropped. It could be that some of the words were in there with a - and without, so this will reduce the number of unique words if we remove -. 
-
-# also check unique number of tokens
-length(unique(clean_df$token))
-# -> 15343: 289 unique (token) words dropped
-
-# check if number of observations is still the same 
-nrow(clean_df)
-# -> 353958: this is still the same as before, which shows it went correctly. 
+# SAVE COMPLETE DATA FRAME INCLUDING FILTER_LEMMA COLUMN 
+saveRDS(lemma_clean, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/study2_df_lemma.RData")
 ```
 
+## TOKEN ##
+```{r}
+# check number of unique words before applying more filters
+length(unique(df_check$token))
+# 16499
 
-Now that the needed filters have been applied I  create a file with terms to include. 
+# add token_filter column to dataframe so we keep the original column and filter can be applied on the new column. 
+df_check$filter_token <- df_check$token
+
+# REMOVING STOPWORDS.
+token_clean <- df_check %>%
+  anti_join(stop_words, by= c("filter_token" = "word"))
+# Note that the stopwords are removed from the dataset so this also effects the original column. 
+
+# check number of unique words after removing stop words
+length(unique(token_clean$filter_token))
+# -> 16198: 301 unique words dropped 
+
+# SPLIT AT - 
+# Split words in token column on the - 
+token_clean <- cSplit(token_clean, "filter_token", "-", direction = "long")
+
+# check results by looking at term that contains - in the original token column on which the filter has not been applied. 
+token_clean[token_clean$token == "non-risk", c("token", "filter_token", "doc_id")]
+
+# SPLIT AT /
+# Split words in token column on the - 
+token_clean <- cSplit(token_clean, "filter_token", "/", direction = "long")
+
+# check results by looking at term that contains - in the original token column on which the filter has not been applied. 
+token_clean[token_clean$token == "police/judicial", c("token", "filter_token", "doc_id")]
+
+# REMOVE NON-ASCII CHARACTERS 
+# remove all the non-alphanumeric characters from words in token column
+token_clean$filter_token <- str_replace_all(token_clean$filter_token, "[^[:alnum:]]", "")
+
+# check results by looking at term that contains a non-ASCII character in the original token column on which the filter has not been applied. 
+token_clean[token_clean$token == "p=.47", c("token", "filter_token", "doc_id")]
+
+# remove all the digit characters from words in token column
+token_clean$filter_token <- gsub("[0-9]+" ,"", token_clean$filter_token)
+
+# check results by looking at term that contains a number in the original token column on which the filter has not been applied here. 
+token_clean[token_clean$token == "p=.47", c("token", "filter_token", "doc_id")]
+
+# check number of unique words after applying more filters
+length(unique(token_clean$filter_token))
+# 14860
+
+# SAVE COMPLETE DATA FRAME INCLUDING FILTER_TOKEN COLUMN 
+saveRDS(token_clean, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/study2_df_token.RData")
+```
+
+# SAVE DATAFRAME WITH ONLY THE FILTER COLUMN
+I also save a date frame with only the filter column and keeping only the unique terms. So that I can easily use that to apply the filter on the glove embedding. 
 
 *NOTE*: I make one a filter with the token column and one with the lemma column. 
 
-
 ```{r}
-# SAVE INCLUDE_TOKEN
-# create data frame with column doc_id term and add a term frequency per doc column column
-nounbydoc5<- clean_df[, list(freq = .N), by = list(doc_id = doc_id, term = token)]
-
-# check number of unique words and documents. 
-length(unique(nounbydoc5$doc_id)) 
-length(unique(nounbydoc5$term)) 
-
-# create a data frame with one column including the unique terms
-include_token <- unique(nounbydoc5$term)
-include_token <- as.data.table(include_token)
-
-saveRDS(include_token, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/include_token.RData")
-
-
 # SAVE INCLUDE_LEMMA
 # create data frame with column doc_id term and add a term frequency per doc column column
-nounbydoc6<- clean_df[, list(freq = .N), by = list(doc_id = doc_id, term = lemma)]
+nounbydoc_lemma <- lemma_clean[, list(freq = .N), by = list(doc_id = doc_id, term = filter_lemma)]
 
 # check number of unique words and documents. 
-length(unique(nounbydoc6$doc_id)) 
-length(unique(nounbydoc6$term)) 
+length(unique(nounbydoc_lemma$doc_id)) 
+length(unique(nounbydoc_lemma$term)) 
 
 # create a data frame with one column including the unique terms
-include_lemma <- unique(nounbydoc6$term)
-include_lemma <- as.data.table(include_lemma)
+filter_lemma <- unique(nounbydoc_lemma$term)
+filter_lemma <- as.data.table(filter_lemma)
 
-saveRDS(include_lemma, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/include_lemma.RData")
+saveRDS(filter_lemma, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/filter_lemma.RData")
+
+# SAVE INCLUDE_TOKEN
+# create data frame with column doc_id term and add a term frequency per doc column column
+nounbydoc_token <- token_clean[, list(freq = .N), by = list(doc_id = doc_id, term = filter_token)]
+
+# check number of unique words and documents. 
+length(unique(nounbydoc_token$doc_id)) 
+length(unique(nounbydoc_token$term)) 
+
+# create a data frame with one column including the unique terms
+filter_token <- unique(nounbydoc_token$term)
+filter_token <- as.data.table(filter_token)
+
+saveRDS(filter_token, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/filter_token.RData")
 ```
+
+
+
