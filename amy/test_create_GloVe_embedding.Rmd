@@ -220,4 +220,23 @@ input_w2v <- pad_sequences(sequences_w2v, maxlen = max_length)
 # show an example from the created index (word and vector)
 tokenizer_w2v$word_index[200:204]
 ```
+# Check the word2vec and glove embedding that they build
+```{r}
+word2vec_embedding <- readRDS(url('https://bhciaaablob.blob.core.windows.net/cmotionsnlpblogs/word2vec_embedding.RDS','rb'))
+
+glove_embedding <- readRDS(url('https://bhciaaablob.blob.core.windows.net/cmotionsnlpblogs/glove_embedding.RDS','rb'))
+
+# compare the two different techniques they used for finding the closest words 
+token <- "pasta"
+embedding_vector <- t(matrix(word2vec_embedding[token,])) 
+cos_sim = sim2(x = word2vec_embedding, y = embedding_vector, method = "cosine", norm = "l2")
+cat(paste0('Words from the embedding layer similar to "pasta":', '\n'))
+print(head(sort(cos_sim[,1], decreasing = TRUE), 10))
+
+
+word <- word2vec_embedding["pasta", , drop = FALSE] 
+cos_sim = sim2(x = word2vec_embedding, y = word, method = "cosine", norm = "l2")
+head(sort(cos_sim[,1], decreasing = TRUE), 10)
+# Conclusion shows the same results so should not matter. 
+```
 

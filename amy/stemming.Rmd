@@ -1,0 +1,129 @@
+---
+title: "Applying Stemming"
+author: "Amy van der Ham"
+date: "10/20/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+I need to check what happens if I use apply stemming. Do I lose a lot of words because the stemming word is not in the embedding? I need to check this for both the asr and GloVe embedding.
+
+```{r}
+# load libraries
+library(dplyr)
+library(cluster)
+library(ggplot2)
+library(devtools)
+library(data.table, quietly = TRUE, warn.conflicts = FALSE)
+```
+
+# Load needed datafiles
+```{r}
+# load data frame with word vectors into object
+vectors_asr <- readRDS("featurematrix_asreview.RData")
+
+# load existing word embeddings
+# load glove vectors into R
+vectors_glove <- data.table::fread('glove.840B.300d.txt', data.table = F,  encoding = 'UTF-8', quote="") 
+
+# rename the columns
+colnames(vectors_glove) <- c('word',paste('dim',1:300,sep = '_'))
+
+# load data frame with column with selection of words to include in analysis. For now I will only 
+df_incltoken <- readRDS("include_token.RData")
+```
+
+# Apply stemming on words in included before selecting which words to include from the vector embedding
+```{r}
+df_stem <- df_incltoken 
+
+library(SnowballC)
+df_stem <- df_stem %>%
+  mutate(stem_words = wordStem(include_token))
+
+# check difference in unique number of words before and after stemming
+length(unique(df_stem$include_token))
+# 15343
+length(unique(df_stem$stem_words))
+# 11357 -> means that there are 3986 less words when stemming is applied. 
+
+# check which words fall under the stem depress
+df_stem[df_stem$stem_words == "depress", ]
+
+# check if the word depress is in the asreview embedding
+vectors_asr["depress", ]
+vectors_asr["depressiveness", ]
+
+# check if the word depress is in the Glove embedding
+vectors_glove[vectors_glove$word == "depression", ]
+vectors_glove[4996, ]
+vectors_glove[vectors_glove$word == "depress", ]
+vectors_glove[vectors_glove$word == "behavior", ]
+```
+
+# Apply filter on embedding to see how many words would be lost when using the stemmed filter. 
+```{r}
+# GLOVE
+# create embedding of the words we want to be included
+final_embedding <- subset(vectors_glove, word %in% df_stem$stem_words)
+
+# check number of unique words
+length(unique((final_embedding$word)))
+# -> 6745 note that the number of unique stem words we had was 11357
+
+# check which words are in the included filter but are not in the feature matrix and are therefore lost (unwanted).
+lost_token <- subset(df_stem, !(stem_words %in% final_embedding$word))
+length(unique(lost_token$stem_words))
+# 4612 unique words lost + 6745 in final = 11357 (total that was in include stem column) 
+
+# ASReview
+# create embedding of the words we want to be included
+final_embedding_asr <- subset(vectors_asr, rownames(vectors_asr) %in% df_stem$stem_words)
+
+# check which words are in the included filter but are not in the feature matrix and are therefore lost (unwanted).
+lost_token_asr <- subset(df_stem, !(stem_words %in% row.names(final_embedding_asr)))
+length(unique(lost_token_asr$stem_words))
+# 5676 unique words lost + 5681 in final = 11357 (total that was in include stem column) 
+```
+
+# Make final GloVE embedding ready for analysis
+```{r}
+# convert first column, word, to row index
+library(tidyverse)
+glove_embedding <- final_embedding %>%
+     remove_rownames() %>%
+     column_to_rownames(var = 'word')
+
+# convert dataframe to a matrix
+glove_embedding <- as.matrix(glove_embedding)
+str(glove_embedding)
+```
+
+# Also check the lemma filter. 
+```{r}
+# load data frame with column with selection of words to include in analysis (lemma)
+df_incllemma <- readRDS("include_lemma.RData")
+
+# check which words are in the include_lemma column 
+df_incllemma[df_incllemma$include_lemma == "mother", ]
+df_incllemma[df_incllemma$include_lemma == "mothers", ]
+# -> only contains mother, this is desirable
+
+df_incltoken[df_incltoken$include_token == "mothers", ]
+# token one does have both mother and mothers included. 
+# Looking at the column and sorting it on alphabetic order I see that depression is still in here in many different shapes and forms so that is still not solved. 
+# create df in which only the words that we want to be included are kept
+final_lemma <- subset(vectors_glove, word %in% df_incllemma$include_lemma)
+
+# check number of unique words
+length(unique((final_lemma$word)))
+
+# non-GloVe: check which words are in the included filter but are not in the feature matrix and are therefore lost (unwanted).
+lost_lemma <- subset(df_incllemma, !(include_lemma %in% final_lemma$word))
+```
+
+

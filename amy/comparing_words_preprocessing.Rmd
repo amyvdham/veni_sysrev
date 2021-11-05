@@ -285,49 +285,12 @@ include_these2 <- as.data.table(include_these2)
 saveRDS(include_these2, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/include_these2.RData")
 ```
 
-# Check manuscript
-Figuring out what happens with the piece of code under Keyword extraction (Exclude words till textrank) in manuscript.
-```{r}
-# check data frame before exclusion filter is applied
-df_bf_ex <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/study2_df.RData")
-
-# check number of unique words
-length(unique(df_bf_ex$lemma))
-# 25535 words 
-
-# check different part of speech values 
-unique(df_bf_ex$upos)
-
-# only select nouns and adjectives
-df_ex <- df_bf_ex[upos %in% c("NOUN", "ADJ"), ]
-
-# check number of unique words
-length(unique(df_ex$lemma))
-# -> 16311: 9224 unique words dropped
-
-# makes sure that only strings that start with a letter are included. (. -> and end with any character?)
-df_ex1 <- df_ex[grepl("^[a-zA-Z].", df_ex$lemma), ]
-
-# check number of unique words
-length(unique(df_ex1$lemma))
-# -> 15515: 796 unique words dropped 
-
-# excludes methodological terms and similar non-substantive words
-exclude_terms <- readLines("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/exclude_terms.txt")
-exclude_these <- unique(unlist(lapply(exclude_terms, grep, x = df_ex1$lemma)))
-df_ex2 <- df_ex1[-exclude_these, ]
-
-# check number of unique words
-length(unique(df_ex2$lemma))
-# -> 15274: 241 unique words dropped. 
-```
-
 # Apply more filters.
 Stopwords removal + removal of dots, numbers and maybe also removal of - or splitting words on -. Finally I might also want to consider to apply stemming after using the filter on the feature matrix. But this is something I will look into later. 
 
 # LEMMA
 ```{r}
-# first I want to load in a file that still contains the upos column to see if the stopwords have been assignent NOUN or ADJ. On this file all filters have been applied until textrank algorith. So this is the file that has been used to create include_these2. On this file we want to apply more filters (mentioned above) before saving it as include_these3.
+# first I want to load in a file that still contains the upos column to see if the stopwords have been assigned NOUN or ADJ. On this file all filters have been applied until textrank algorith. So this is the file that has been used to create include_these2. On this file we want to apply more filters (mentioned above) before saving it as include_these3.
 df_check <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/study2_df_kw.RData")
 
 # check which value is assigned to the word "and" in the upos column. 
@@ -484,3 +447,89 @@ include_lemma <- as.data.table(include_lemma)
 saveRDS(include_lemma, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/include_lemma.RData")
 ```
 
+# Check manuscript
+Figuring out what happens with the piece of code under Keyword extraction (Exclude words till textrank) in manuscript.
+```{r}
+# check data frame before exclusion filter is applied
+df_bf_ex <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/study2_df.RData")
+
+# check number of unique words
+length(unique(df_bf_ex$lemma))
+# 25535 words 
+
+# check different part of speech values 
+unique(df_bf_ex$upos)
+
+# only select nouns and adjectives
+df_ex <- df_bf_ex[upos %in% c("NOUN", "ADJ"), ]
+
+# check number of unique words
+length(unique(df_ex$lemma))
+# -> 16311: 9224 unique words dropped
+
+# makes sure that only strings that start with a letter are included. (. -> and end with any character?)
+df_ex1 <- df_ex[grepl("^[a-zA-Z].", df_ex$lemma), ]
+
+# check number of unique words
+length(unique(df_ex1$lemma))
+# -> 15515: 796 unique words dropped 
+
+# excludes methodological terms and similar non-substantive words
+exclude_terms <- readLines("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/exclude_terms.txt")
+exclude_these <- unique(unlist(lapply(exclude_terms, grep, x = df_ex1$lemma)))
+df_ex2 <- df_ex1[-exclude_these, ]
+
+# check number of unique words
+length(unique(df_ex2$lemma))
+# -> 15274: 241 unique words dropped. 
+
+# CHECK WHAT HAPPENS WHEN DICTIONARY FILTER IS APPLIED. 
+# first apply text rank code 
+kw_tr <- textrank_keywords(x = df_ex2$lemma[df_ex2$upos %in% c("NOUN", "ADJ")], ngram_max = 3, sep = " ")
+
+# Merge back with original data
+df_ex2$keyword <- txt_recode_ngram(df_ex2$lemma, compound = kw_tr$keywords$keyword, ngram = kw_tr$keywords$ngram, sep = " ")
+
+df_ex2$keyword[!df_ex2$keyword %in% kw_tr$keywords$keyword] <- NA
+
+# from here the dictionary filter is applied. Check what happens 
+df_analyze <- df_ex2[!is.na(df_ex2$keyword), ]
+
+# check df_analyze on some words that should be there before dicitionary filter and should have a different word after filter is applied
+df_analyze[df_analyze$token == "binge", ]
+df_analyze[df_analyze$keyword == "binge drinking related", ]
+
+# I think this is a keywords that should fall under substance once the dictionary filter is applied. 
+df_analyze[df_analyze$keyword == "substance use disorder", ]
+
+# apply dictionary filter
+dict <- read_yaml("yaml_dict.txt")
+res_cat <- cat_words(df_analyze$keyword, dict, handle_dups = "all")
+# Check coding issues
+res_cat$dup
+head(res_cat$unmatched)
+df_analyze <- merge_df(df_analyze, res_cat$words, "word_coded")
+
+# check what happened 
+df_analyze[df_analyze$keyword == "substance use disorder", c("token", "lemma", "keyword", "word_coded")]
+# as expected this word is now coded as substance. 
+
+# check which words fall under the word_coded "mothers"
+df_analyze[df_analyze$word_coded == "mothers", c("token", "lemma", "keyword", "word_coded")]
+
+df_analyze[df_analyze$lemma == "inequality", c("token", "lemma", "keyword", "word_coded")]
+# -> here we see that this lemma has different values for the word_coded column. 
+
+# check which words fall under the word_coded "negative_emotionality"
+df_analyze[df_analyze$word_coded == "negative_emotionality", c("token", "lemma", "keyword", "word_coded")]
+
+
+# check if the word "mothers" in token column falls under different word_coded values
+df_analyze[df_analyze$token == "mothers", c("token", "lemma", "keyword", "word_coded")]
+
+
+# check the keyword "mother online well"
+df_analyze[df_analyze$keyword == "mother online well", ]
+
+# -> here we see that this concerns the same sentence, it is in there twice because it has two different values for word_coded. 
+```

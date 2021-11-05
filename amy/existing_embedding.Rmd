@@ -1,0 +1,237 @@
+---
+title: "Existing word embedding models"
+author: "Amy van der Ham"
+date: "10/11/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Online examples on how to load exsisting/pretrained word embedding. 
+I am using an existing embedding of GloVe which can be found on the following page: https://nlp.stanford.edu/projects/glove/
+```{r}
+# Keras page 
+library(data.table, quietly = TRUE, warn.conflicts = FALSE)
+# load glove vectors into R
+vectors <- data.table::fread('glove.840B.300d.txt', data.table = F,  encoding = 'UTF-8', quote="") 
+
+# rename the columns
+colnames(vectors) <- c('word',paste('dim',1:300,sep = '_'))
+
+# first make a subselection of this big dataframe and only keep the words that I am interested in
+df_incltoken <- readRDS("include_token.RData")
+
+final_embedding <- subset(vectors, word %in% df_incltoken$include_token)
+
+# check which words are in the included filter but are not in the feature matrix and are therefore lost (unwanted).
+lost_token <- subset(df_incltoken, !(include_token %in% final_embedding$word))
+# 2702 words lost + 12641 in final = 15343 (total that was in include data frame) 
+
+# convert first column, word, to row index
+library(tidyverse)
+glove_embedding <- final_embedding %>%
+     remove_rownames() %>%
+     column_to_rownames(var = 'word')
+
+# convert dataframe to a matrix
+glove_embedding <- as.matrix(glove_embedding)
+str(glove_embedding)
+```
+
+# Cluster analysis
+Now I will do the same analysis that I have done before but now using the existing embeddings and not the ones we got from asreview. 
+```{r}
+library(text2vec)
+# wat ligt er dicht bij 'children'
+word <- glove_embedding["children", , drop = FALSE] 
+cos_sim = sim2(x = glove_embedding, y = word, method = "cosine", norm = "l2")
+head(sort(cos_sim[,1], decreasing = TRUE), 10)
+
+# wat ligt er dicht bij 'sex'
+word <- glove_embedding["sex", , drop = FALSE] 
+cos_sim = sim2(x = glove_embedding, y = word, method = "cosine", norm = "l2")
+head(sort(cos_sim[,1], decreasing = TRUE), 10)
+
+# wat ligt er dicht bij 'boys'
+word <- glove_embedding["boys", , drop = FALSE] 
+cos_sim = sim2(x = glove_embedding, y = word, method = "cosine", norm = "l2")
+head(sort(cos_sim[,1], decreasing = TRUE), 10)
+
+# wat ligt er dicht bij 'mothers'
+word <- glove_embedding["mothers", , drop = FALSE] 
+cos_sim = sim2(x = glove_embedding, y = word, method = "cosine", norm = "l2")
+head(sort(cos_sim[,1], decreasing = TRUE), 30)
+
+# inspect some specific words from dict file
+# cortisol falls under the category endocrine in the dict file together with the words corticoster, adrenocor, glucocortico, gonad, hormon
+# wat ligt er dicht bij 'cortisol'
+word <- glove_embedding["cortisol", , drop = FALSE] 
+cos_sim = sim2(x = glove_embedding, y = word, method = "cosine", norm = "l2")
+head(sort(cos_sim[,1], decreasing = TRUE), 25)
+# some of these words indeed lie close to cortisol 
+
+# -> wat ligt er dicht bij 'health'?
+# in the dictionary the following regular expression belong to health: asthma, ^health$, ^chronic illness$, ^pain$, ^disease$, ^illness$, diabetes, cancer, (?<!sexually transmitted |hiv )disease, physical.+(illness|disorder), epilep, health.related
+word <- glove_embedding["health", , drop = FALSE] 
+cos_sim = sim2(x = glove_embedding, y = word, method = "cosine", norm = "l2")
+head(sort(cos_sim[,1], decreasing = TRUE), 25)
+
+
+# -> wat ligt er dicht bij 'fathers'?
+word <- glove_embedding["fathers", , drop = FALSE] 
+cos_sim = sim2(x = glove_embedding, y = word, method = "cosine", norm = "l2")
+head(sort(cos_sim[,1], decreasing = TRUE), 25)
+
+# -> wat ligt er dicht bij 'parenting'?
+word <- glove_embedding["parenting", , drop = FALSE] 
+cos_sim = sim2(x = glove_embedding, y = word, method = "cosine", norm = "l2")
+head(sort(cos_sim[,1], decreasing = TRUE), 40)
+# -> 'interestingly' motherhood and mothers lies a lot closer to parenting than fathers. 
+
+# -> wat ligt er dicht bij 'environment'?
+word <- glove_embedding["environment", , drop = FALSE] 
+cos_sim = sim2(x = glove_embedding, y = word, method = "cosine", norm = "l2")
+head(sort(cos_sim[,1], decreasing = TRUE), 40)
+
+
+# wat ligt er dicht bij 'mother'
+# check this to see how this is different than when we look at what lies close to "mothers"
+word <- glove_embedding["mother", , drop = FALSE] 
+cos_sim = sim2(x = glove_embedding, y = word, method = "cosine", norm = "l2")
+head(sort(cos_sim[,1], decreasing = TRUE), 30)
+```
+
+# VISUALIZATION WITH UMAP
+Do the embeddings from glove clearly show us that (with this technique: glove) we are able to cluster words together that have the same semantic meaning? 
+```{r}
+# load library
+library(uwot)
+# dimension reduction
+glove_umap <- umap(glove_embedding, n_components = 2, metric = "cosine", n_neighbors = 25, min_dist = 0.1, spread=2)
+
+# Dimensions of end result
+dim(glove_umap)
+
+# Put results in a dataframe for ggplot
+df_glove_umap <- as.data.frame(glove_umap, stringsAsFactors = FALSE)
+
+# Add the labels of the words to the dataframe
+df_glove_umap$word <- rownames(glove_embedding)
+colnames(df_glove_umap) <- c("UMAP1", "UMAP2", "word")
+df_glove_umap$technique <- 'Word2Vec'
+cat(paste0('Our Word2Vec embedding reduced to 2 dimensions:', '\n'))
+str(df_glove_umap)
+
+# Plot the UMAP dimensions 
+ggplot(df_glove_umap) +
+      geom_point(aes(x = UMAP1, y = UMAP2), colour = 'blue', size = 0.05) +
+      labs(title = "Word embedding in 2D using UMAP") +
+      theme(plot.title = element_text(hjust = .5, size = 14))
+
+# Plot the left bottom/middle part of the word embedding with labels
+ggplot(df_glove_umap[df_glove_umap$UMAP1 > -14.0 & df_glove_umap$UMAP1 < -12.0 & df_glove_umap$UMAP2 < -2.6,]) +
+      geom_point(aes(x = UMAP1, y = UMAP2), colour = 'blue', size = 2) +
+      geom_text(aes(UMAP1, UMAP2, label = word), size = 2.5, vjust=-1, hjust=0) +
+      labs(title = "Word embedding in 2D using UMAP - partial view") +
+      theme(plot.title = element_text(hjust = .5, size = 14))
+# -> interestingly you see that these are all names. 
+
+# Plot the word embedding of words that are related for the GloVe model
+word <- glove_embedding["mothers", , drop = FALSE] 
+cos_sim = sim2(x = glove_embedding, y = word, method = "cosine", norm = "l2")
+select <- data.frame(rownames(as.data.frame(head(sort(cos_sim[,1], decreasing = TRUE), 25))))
+colnames(select) <- "word"
+selected_words <- df_glove_umap %>% inner_join(y=select, by= "word", match = "all") 
+
+# The ggplot visual for glove embedding word mothers. 
+mothers_plot <- ggplot(selected_words, aes(x = UMAP1, y = UMAP2, colour = word == 'mothers')) + 
+      geom_point(show.legend = FALSE) + 
+      scale_color_manual(values = c('black', 'red')) +
+      geom_text(aes(UMAP1, UMAP2, label = word), show.legend = FALSE, size = 2.5, vjust=-1.5, hjust=0) +
+      labs(title = "glove word embedding of words related to 'mothers'") +
+      theme(plot.title = element_text(hjust = .5, size = 14))
+
+mothers_plot
+
+
+# Plot the word embedding of words that are related for the GloVe model
+word <- glove_embedding["parenting", , drop = FALSE] 
+cos_sim = sim2(x = glove_embedding, y = word, method = "cosine", norm = "l2")
+select <- data.frame(rownames(as.data.frame(head(sort(cos_sim[,1], decreasing = TRUE), 25))))
+colnames(select) <- "word"
+selected_words <- df_glove_umap %>% inner_join(y=select, by= "word", match = "all") 
+
+# The ggplot visual for glove embedding word mothers. 
+parenting_plot <- ggplot(selected_words, aes(x = UMAP1, y = UMAP2, colour = word == 'parenting')) + 
+      geom_point(show.legend = FALSE) + 
+      scale_color_manual(values = c('black', 'red')) +
+      geom_text(aes(UMAP1, UMAP2, label = word), show.legend = FALSE, size = 2.5, vjust=-1.5, hjust=0) +
+      labs(title = "glove word embedding of words related to 'parenting'") +
+      theme(plot.title = element_text(hjust = .5, size = 14))
+
+parenting_plot
+```
+
+# Exploration vectors pretrained glove word embedding
+Note that there are also bigrams in the existing model, it looks like the words in bigrams are connected with an -
+```{r}
+# the bigram risk-factor can be found in the glove word embedding, as well as black market. 
+vectors[770677, ]
+vectors[234407, ]
+
+# I have not found any trigrams yet
+vectors[vectors$word == "natural-language-processing", ]
+vectors[vectors$word == "happy-new-year", ]
+vectors[vectors$word == "online-game-addiction", ]
+```
+
+# TRY-OUT other tutorial: https://cran.r-project.org/web/packages/textTinyR/vignettes/word_vectors_doc2vec.html 
+Even though they apply document clustering I am going to see if I can do the same but cluster the words. 
+```{r}
+library(ClusterR)
+# center and scale the data
+scal_dat <- ClusterR::center_scale(glove_embedding)     
+
+opt_cl <- Optimal_Clusters_KMeans(scal_dat,
+                                 max_clusters = 15,
+                                 criterion = "distortion_fK",
+                                 fK_threshold = 0.85, num_init = 3,
+                                 max_iters = 50,
+                                 initializer = "kmeans++", 
+                                 tol = 1e-04, 
+                                 plot_clusters = TRUE,
+                                 verbose = T, 
+                                 tol_optimal_init = 0.3, 
+                                 seed = 1)
+
+# Performing the K-mean clustering
+num_clust <- 14
+
+km_glove <- KMeans_rcpp(scal_dat, 
+                        clusters = num_clust, 
+                        num_init = 3, 
+                        max_iters = 50,
+                        initializer = "kmeans++", 
+                        fuzzy = T, 
+                        verbose = F,
+                        CENTROIDS = NULL, 
+                        tol = 1e-04, 
+                        tol_optimal_init = 0.3, 
+                        seed = 2)
+
+table(km_glove$clusters)
+
+#  perform cluster-medoids clustering using the pearson-correlation metric, which resembles the cosine distance 
+kmed <- Cluster_Medoids(scal_dat, clusters = num_clust, 
+                                 distance_metric = "pearson_correlation",
+                                 minkowski_p = 1, threads = 6, swap_phase = TRUE, 
+                                 fuzzy = FALSE, verbose = F, seed = 1)
+
+
+table(kmed$clusters)
+```
+

@@ -32,8 +32,8 @@ source("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/word_f
 # study1details <- read_yaml("study1_details.yml")
 
 # note that dict from word_function.R is overwritten here
-# dict <- read_yaml("yaml_dict.txt")
-# this dictionary was used later on to classify closely related terms -> If I am correct this what I want to do with word vector embeddings instead. 
+dict <- read_yaml("yaml_dict.txt")
+# this dictionary was used later on to classify closely related terms -> If I am correct this what I want to do with word vector embedding instead. 
 
 ## Look at POS tags?
 # reads file which contains the records into an object called recs
@@ -95,5 +95,38 @@ length(unique(df$doc))
 length(unique(df$word))
 
 # NOTE after excluding the terms the corpus thus exists of 5030 documents with 7848 terms and not of 5031 terms with 8080 unique terms. 
+```
+
+# Also apply dictionary filter to see what happens. 
+```{r}
+
+# Categorize words
+res_cat <- cat_words(df$word, dict, handle_dups = "all")
+# Check coding issues
+res_cat$dup  
+head(res_cat$unmatched)
+
+# Merge back with original data
+df <- merge_df(df, res_cat$words, "word_coded")
+
+# check the number of unique values in the column word_coded
+length(unique(df$word_coded))
+# -> 5292 (this is in line with what is stated in the paper)
+
+# Check which value rows have in the column words and the column word_coded. Note that word_coded are the words that are included in the analysis. 
+df[df$word == "mothers", c("word", "word_coded")]
+df[df$word_coded == "parenting", c("word", "word_coded")]
+df[df$word == "emotion socialization", c("word", "word_coded")]
+
+# check words from figure 2
+df[df$word == "emotion regulation", c("word", "word_coded")]
+# emotion regulation can only be found in the column word and not in the column word_coded
+
+df[df$word_coded == "SES", c("word", "word_coded")]
+df[df$word_coded == "age", c("word", "word_coded")]
+# these are mainly bigrams that belong to this word.
+
+# check a word that is not in the dictionary
+df[df$word_coded == "aboriginal", c("word", "word_coded")]
 ```
 

@@ -78,14 +78,14 @@ library(text2vec)
 
 # transpose the matrix
 asr_embedding_test <- t(final_token)
-str(asr_embedding)
+str(asr_embedding_test)
 # the str is as followed: num [1:40, 1:14088], however we want it to be like this  num [1:14088, 1:40] for the lines below to work. This is because the function t() transposes the rows and columns, it rotates the data.frame so that the rows become the columns and the columns become the rows. The result of the t() command is always a matrix object.
 
 # just applying as.matrix seems to work. See below:
 asr_embedding <- as.matrix(final_token)
 str(final_token)
 
-# With the 40 dimenisions, calculate the L2 (Euclidean distance) between words and find out which words are close to for example children, mothers, or sex. 
+# With the 40 dimensions, calculate the L2 (Euclidean distance) between words and find out which words are close to for example children, mothers, or sex. 
 # wat ligt er dicht bij 'children'
 word <- asr_embedding["children", , drop = FALSE] 
 cos_sim = sim2(x = asr_embedding, y = word, method = "cosine", norm = "l2")
@@ -94,7 +94,7 @@ head(sort(cos_sim[,1], decreasing = TRUE), 10)
 # wat ligt er dicht bij 'sex'
 word <- asr_embedding["sex", , drop = FALSE] 
 cos_sim = sim2(x = asr_embedding, y = word, method = "cosine", norm = "l2")
-head(sort(cos_sim[,1], decreasing = TRUE), 10)
+head(sort(cos_sim[,1], decreasing = TRUE), 25)
 
 # wat ligt er dicht bij 'boys'
 word <- asr_embedding["boys", , drop = FALSE] 
@@ -104,7 +104,24 @@ head(sort(cos_sim[,1], decreasing = TRUE), 10)
 # wat ligt er dicht bij 'mothers'
 word <- asr_embedding["mothers", , drop = FALSE] 
 cos_sim = sim2(x = asr_embedding, y = word, method = "cosine", norm = "l2")
-head(sort(cos_sim[,1], decreasing = TRUE), 15)
+head(sort(cos_sim[,1], decreasing = TRUE), 25)
+
+
+# wat ligt er dicht bij 'cortisol'
+word <- asr_embedding["cortisol", , drop = FALSE] 
+cos_sim = sim2(x = asr_embedding, y = word, method = "cosine", norm = "l2")
+head(sort(cos_sim[,1], decreasing = TRUE), 25)
+
+# wat ligt er dicht bij 'health'
+word <- asr_embedding["health", , drop = FALSE] 
+cos_sim = sim2(x = asr_embedding, y = word, method = "cosine", norm = "l2")
+head(sort(cos_sim[,1], decreasing = TRUE), 25)
+# check somewhat different code to get same result to see if it differs. In [tutorial](https://medium.com/broadhorizon-cmotions/nlp-with-r-part-2-training-word-embedding-models-and-visualize-results-ae444043e234) they use this one for word2vec embedding and the other one for the glove embedding. 
+token <- "mothers"
+embedding_vector <- t(matrix(asr_embedding[token,])) 
+cos_sim = sim2(x = asr_embedding, y = embedding_vector, method = "cosine", norm = "l2")
+cat(paste0('Words from the embedding layer similar to "mothers":', '\n'))
+print(head(sort(cos_sim[,1], decreasing = TRUE), 10))
 ```
 
 # VISUALIZATION WITH UMAP
@@ -158,6 +175,3 @@ mothers_plot <- ggplot(selected_words, aes(x = UMAP1, y = UMAP2, colour = word =
 
 mothers_plot
 ```
-
-
-

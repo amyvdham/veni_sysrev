@@ -120,7 +120,7 @@ mismatches <- df_check[df_check$mismatch2 == 0 & df_check$match == 1, ]
 # here we get that value of 629 again..
 ```
 Temporarily solution 
-For now I will just create the following solution in which only the words that are exactly in df_included are in final_correct. Later I might want to check with applying stemming before or after filtering on feature matrix. Because it would be nice if those words such of the example "lyric" "lyrics" but also examples of "data." not being included whereas "data" is in the feature matrix. Therefore I would have to adjust the filter include_these in the other file. If I have done this. Then I would want to use the code below for selecting the words to be included from the feature matrix. 
+For now I will just create the following solution in which only the words that are exactly in df_included are in final_correct. Later I might want to check with applying stemming before or after filtering on feature matrix. Because it would be nice if those words such of the example "lyric" "lyrics" but also examples of "data." not being included whereas "data" is in the feature matrix (second example means deleting points). Therefore I would have to adjust the filter include_these in the other file. If I have done this. Then I would want to use the code below for selecting the words to be included from the feature matrix. 
 ```{r}
 # FINAL CORRECT
 final_correct <- subset(df, rownames(df) %in% df_include$include_these2)
