@@ -1,0 +1,109 @@
+---
+title: "Try - out DBSCAN"
+author: "Amy van der Ham"
+date: "11/16/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# load libraries
+library(dplyr)
+library(cluster)
+library(ggplot2)
+library(devtools)
+library(data.table, quietly = TRUE, warn.conflicts = FALSE)
+
+# libraries dbscan
+library(fpc)
+library(dbscan)
+```
+
+# set.seed prior to running the k-means clustering 
+```{r}
+set.seed(88)
+```
+
+# Load needed datafiles
+```{r}
+# load existing word embeddings
+# load glove vectors into R
+vectors_glove <- data.table::fread('glove.840B.300d.txt', data.table = F,  encoding = 'UTF-8', quote="") 
+
+# rename the columns
+colnames(vectors_glove) <- c('word',paste('dim',1:300,sep = '_'))
+
+# load data frame with column with selection of words to include in analysis. 
+df_incltoken <- readRDS("filter_token.RData")
+
+# create df in which only the words that we want to be included are kept
+token_embedding <- subset(vectors_glove, word %in% df_incltoken$filter_token)
+```
+
+# Make final GloVE embedding ready for analysis
+```{r}
+# convert first column, word, to row index
+library(tidyverse)
+glove_embedding <- token_embedding %>%
+     remove_rownames() %>%
+     column_to_rownames(var = 'word')
+
+# convert dataframe to a matrix
+glove_embedding <- as.matrix(glove_embedding)
+str(glove_embedding)
+```
+
+
+
+# try - out dbscan tutorial 
+http://www.sthda.com/english/wiki/wiki.php?id_contents=7940
+```{r}
+# Compute DBSCAN 
+db <- dbscan::dbscan(glove_embedding, 8, 5) 
+# Plot DBSCAN results
+plot(db, glove_embedding, main = "DBSCAN", frame = FALSE)
+
+# same plot using different function 
+library("factoextra")
+fviz_cluster(db, glove_embedding, stand = FALSE, frame = FALSE, geom = "point")
+
+# Print DBSCAN results 
+print(db)
+# -> gives one big cluster and 402 noise points 
+
+# cluster membership
+db$cluster
+
+# determining optimal eps value
+dbscan::kNNdistplot(glove_embedding, k =  5)
+abline(h = 0.15, lty = 2)
+
+
+# try dbscan met eps = 4
+db4 <- dbscan::dbscan(glove_embedding, 4, 5) 
+
+# Print DBSCAN results 
+print(db4)
+# gives 17 clusters but many noise points (12557)
+
+# try dbscan met een andere minPts value
+db4_10 <- dbscan::dbscan(glove_embedding, 4, 10) 
+print(db4_10)
+
+# random attempt
+db_ra <- dbscan::dbscan(glove_embedding, .25, 10) 
+print(db_ra)
+
+
+```
+The method proposed here consists of computing the he k-nearest neighbor distances in a matrix of points.
+
+The idea is to calculate, the average of the distances of every point to its k nearest neighbors. **The value of k will be specified by the user and corresponds to MinPts.**
+
+Next, these k-distances are plotted in an ascending order. The aim is to determine the “knee”, which corresponds to the optimal eps parameter
+
