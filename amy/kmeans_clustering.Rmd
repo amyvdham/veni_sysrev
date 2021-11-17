@@ -10,7 +10,7 @@ editor_options:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-Try out k-means clustering on the exiting GloVe embedding on which the token filter is applied
+Try out k-means clustering on the exsisting GloVe embedding on which the token filter is applied
 
 ```{r}
 # load libraries
@@ -65,6 +65,9 @@ glove_embedding <- token_embedding %>%
 # convert dataframe to a matrix
 glove_embedding <- as.matrix(glove_embedding)
 str(glove_embedding)
+
+# save the glove embedding to which the filter is applied so this can be easily loaded into other scripts
+saveRDS(lemma_clean, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/glove_embedding.RData")
 ```
 
 # Look at wich words are close to health

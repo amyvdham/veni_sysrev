@@ -63,7 +63,7 @@ colnames(df_wordvecemb) <- c("word", paste0("dim", 1:40))
 summary(df_wordvecemb)
 # -> no missing values. 
 ```
-To be able to run cluster analysis etc. on this data I want the words to be the rownames and the columns to be the dimensions. I will this dataframe as a .Rdata object so that I can easily load it into the markdown files in which I run the cluster analysis. The data object can be easily transformed to a matrix by the t() function. 
+To be able to run cluster analysis etc. on this data I want the words to be the rownames and the columns to be the dimensions. I will this dataframe as a .Rdata object so that I can easily load it into the markdown files in which I run the cluster analysis. 
 ```{r}
 # Set rownames to words
 #For some reason renaming the rownames does not work on the data frame so first convert to matrix
@@ -93,5 +93,5 @@ str(mat)
 # -> numerical matrix
 
 # Save data frame as .RData
-saveRDS(df, "amy/featurematrix_asreview.RData")
+saveRDS(df, "amy/asreview_embedding_sim.RData")
 ```

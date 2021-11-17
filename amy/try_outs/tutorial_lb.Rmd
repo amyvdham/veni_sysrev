@@ -11,6 +11,7 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+https://blogs.rstudio.com/ai/posts/2017-12-22-word-embeddings-with-keras/
 
 # load data frame with word vector embeddings
 ```{r}
@@ -22,6 +23,7 @@ embedding_mat <- t(df)
 
 ```
 
+# Understanding the embeddings
 ```{r}
 library(text2vec)
 
@@ -33,5 +35,4 @@ find_similar_words <- function(word, embedding_matrix, n = 5) {
 }
 
 find_similar_words("friends", testmat,10)
-
 ```

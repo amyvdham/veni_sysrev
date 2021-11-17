@@ -27,7 +27,7 @@ library(superheat)
 # load data frame with word vector embeddings
 ```{r}
 # load data frame with word vectors into object
-df <- readRDS("featurematrix_asreview.RData")
+df <- readRDS("asreview_embedding_sim.RData")
 
 # load data frame with column with selection of words to include in analysis
 df_include <- readRDS("include_these.RData")

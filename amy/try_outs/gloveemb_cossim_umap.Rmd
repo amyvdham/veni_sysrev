@@ -1,5 +1,5 @@
 ---
-title: "Existing word embedding models"
+title: "Analysis with an existing embedding"
 author: "Amy van der Ham"
 date: "10/11/2021"
 output: html_document

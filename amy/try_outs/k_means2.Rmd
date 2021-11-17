@@ -284,7 +284,6 @@ ggtheme = theme_minimal()
 
 ## CLUSTER ANALYSIS DETERMINING THE NUMBER OF CLUSTER FOR FULL DATASET##
 # Determining the value of the parameter K for the glove_embedding matrix
-This gives warning about the number of iterations being set to 10 is not enough to converge. So will need to adjust this. Next to this the resulting plot does not give a clear elbow point. 
 ```{r}
 wssplot <- function(data, nc=15, seed=1234){
   wss <- (nrow(data)-1)*sum(apply(data,2,var))

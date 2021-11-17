@@ -1,5 +1,5 @@
 ---
-title: "Cluster analysis"
+title: "Cosine similarity and UMAP"
 Author: "Amy van der Ham"
 date: "10/8/2021"
 output: html_document
@@ -22,7 +22,7 @@ library(devtools)
 # LOADING FEATURE MATRIX AND APPLYING FILTER
 ```{r}
 # load data frame with word vectors into object
-df <- readRDS("featurematrix_asreview.RData")
+df <- readRDS("asreview_embedding_sim.Rdata")
 
 # load data frame with column with selection of words to include in analysis
 df_incltoken <- readRDS("include_token.RData")
@@ -66,9 +66,9 @@ length(unique(df_stem$stem_words))
 # problem here is that words that will have the same stem_words will have slightly different vector embedding because the original word is different even though their stem_words is identical 
 df_stem[df_stem$stem_words == "abnorm", ]
 ```
-For now I will apply the cluster analysis on the feature matrix final_token 
+For now I will apply the analysis on the feature matrix final_token 
 
-# CLUSTER ANALYSIS
+# ANALYSIS
 ```{r}
 # libraries
 library(tidyverse)

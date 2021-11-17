@@ -10,7 +10,7 @@ editor_options:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-I need to check what happens if I use apply stemming. Do I lose a lot of words because the stemming word is not in the embedding? I need to check this for both the asr and GloVe embedding.
+I need to check what happens if I apply stemming. Do I lose a lot of words because the stemming word is not in the embedding? I need to check this for both the asreview and GloVe embedding.
 
 ```{r}
 # load libraries
@@ -24,7 +24,7 @@ library(data.table, quietly = TRUE, warn.conflicts = FALSE)
 # Load needed datafiles
 ```{r}
 # load data frame with word vectors into object
-vectors_asr <- readRDS("featurematrix_asreview.RData")
+vectors_asr <- readRDS("asreview_embedding_sim.Rdata")
 
 # load existing word embeddings
 # load glove vectors into R
@@ -90,18 +90,6 @@ length(unique(lost_token_asr$stem_words))
 # 5676 unique words lost + 5681 in final = 11357 (total that was in include stem column) 
 ```
 
-# Make final GloVE embedding ready for analysis
-```{r}
-# convert first column, word, to row index
-library(tidyverse)
-glove_embedding <- final_embedding %>%
-     remove_rownames() %>%
-     column_to_rownames(var = 'word')
-
-# convert dataframe to a matrix
-glove_embedding <- as.matrix(glove_embedding)
-str(glove_embedding)
-```
 
 # Also check the lemma filter. 
 ```{r}
@@ -115,7 +103,7 @@ df_incllemma[df_incllemma$include_lemma == "mothers", ]
 
 df_incltoken[df_incltoken$include_token == "mothers", ]
 # token one does have both mother and mothers included. 
-# Looking at the column and sorting it on alphabetic order I see that depression is still in here in many different shapes and forms so that is still not solved. 
+# Looking at the column and sorting it on alphabetic order I see that depression is still in here (the lemma column) in many different shapes and forms so that is still not solved. 
 # create df in which only the words that we want to be included are kept
 final_lemma <- subset(vectors_glove, word %in% df_incllemma$include_lemma)
 

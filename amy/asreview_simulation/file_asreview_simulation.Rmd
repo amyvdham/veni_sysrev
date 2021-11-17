@@ -73,8 +73,10 @@ summary(as.factor(asreview_simulation3$included))
 write.csv(asreview_simulation3, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/asreview_simulation/asreview_simulation3.csv", row.names = FALSE)
 ```
 
-Need to create the file again as the final file above did not include the column abstracts. 
-*Note csv. created below was not usable in asreview as for some reason it did not find any excluded papers (coded zero on the variable included). I do not know why this was the case but I have now done it a different way that does seem to work -> see code above from asreview_simulation3. 
+Need to create the file again as the file asreview_simulation.csv above did not include the column abstracts. 
+
+*Note*: csv. file created below (asreview_imulation2) was not usable in asreview as for some reason it did not find any excluded papers (coded zero on the variable included). I do not know why this was the case but I have now done it a different way that does seem to work -> see code above from asreview_simulation3. 
+
 ```{r}
 # rename the original included variable that was in the asreview_result_sysrevemotprob.csv to included_old so that we can call the new and correctly coded (1 = relevant, 0 = irrelevant) column included. 
 asr_results <- asreview_results

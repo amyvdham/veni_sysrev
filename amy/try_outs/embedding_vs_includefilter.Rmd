@@ -30,7 +30,7 @@ Most important part for the codes below are CHECK 1 and FINAL CORRECT
 # load data frame with word vector embeddings
 ```{r}
 # load data frame with word vectors into object
-df <- readRDS("featurematrix_asreview.RData")
+df <- readRDS("asreview_embedding_sim.RData")
 
 # load data frame with column with selection of words to include in analysis
 df_include <- readRDS("include_these2.RData")
@@ -52,7 +52,7 @@ length(unique(rownames(df_final)))
 # check words that should be included but are not in the data frame with the words embeddings and therefore lost. 
 df_lost <- subset(df_include, !(include_these2 %in% rownames(df_final)))
 # -> you would expect this number of observations to be 2554 and not 3268....
-# this makes sense now i think about it, there are 3268 words in included that are not in df_final. There are 714 words that are not in the included data frame but are part of the df final -> see if I can get an expression that can show me that.  
+# this makes sense now I think about it, there are 3268 words in included that are not in df_final. There are 714 words that are not in the included data frame but are part of the df final -> see if I can get an expression that can show me that.  
 
 12720+2554=15274
 12006+3268=15274
@@ -120,12 +120,10 @@ mismatches <- df_check[df_check$mismatch2 == 0 & df_check$match == 1, ]
 # here we get that value of 629 again..
 ```
 Temporarily solution 
-For now I will just create the following solution in which only the words that are exactly in df_included are in final_correct. Later I might want to check with applying stemming before or after filtering on feature matrix. Because it would be nice if those words such of the example "lyric" "lyrics" but also examples of "data." not being included whereas "data" is in the feature matrix (second example means deleting points). Therefore I would have to adjust the filter include_these in the other file. If I have done this. Then I would want to use the code below for selecting the words to be included from the feature matrix. 
+For now I will just create the following solution in which only the words that are exactly in df_included are in final_correct. Later I might want to check with applying stemming before or after filtering on feature matrix. Because it would be nice if those words such of the example "lyric" "lyrics" but also examples of "data." not being included whereas "data" is in the feature matrix (second example means deleting points). Therefore I would have to adjust the filter include_these in the other file. If I have done this. Then I would want to use the code below for selecting the words to be included from the feature matrix.
+
 ```{r}
 # FINAL CORRECT
 final_correct <- subset(df, rownames(df) %in% df_include$include_these2)
 # -> this seems to work, gives 12006 observations  however I now see that there are still stopwords in this file.... Will check comparison file to see why this is the case and if I can remove them.
 ```
-
-# CLUSTER ANALYSIS
-For the cluster analysis I will use df_final because here the least words are deleted. Even though this means that there are some words that are included that are not exactly in the included filter (since a shorter version of the word is in the included filter it might be include these words anyway.)

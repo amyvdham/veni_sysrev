@@ -237,6 +237,7 @@ print(head(sort(cos_sim[,1], decreasing = TRUE), 10))
 word <- word2vec_embedding["pasta", , drop = FALSE] 
 cos_sim = sim2(x = word2vec_embedding, y = word, method = "cosine", norm = "l2")
 head(sort(cos_sim[,1], decreasing = TRUE), 10)
+
 # Conclusion shows the same results so should not matter. 
 ```
 

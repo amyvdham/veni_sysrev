@@ -1,5 +1,5 @@
 ---
-title: "check asreview file"
+title: "check asreview results file"
 author: "Amy van der Ham"
 output: html_document
 editor_options: 
@@ -36,10 +36,10 @@ recs <- as.data.table(recs)
 total <- merge(asreview_results, recs, by="doi")
 summary(as.factor(total$included))
 
-# -> if I merge the two datasets all the documents that were coded with a 1 (i.e. relevant/included) in the column included are dropped as well as so articles that had the value NA on the variable included? 
+# -> if I merge the two datasets, all the documents that were coded with a 1 (i.e. relevant/included) in the column included are dropped as well as so articles that had the value NA on the variable included? 
 
 # check combinaties van columns notes, rayyan, excluded_rayyan en included
-# unique combinaties voor records die op de variable notes included zijn geassigned 
+# unique combinaties voor records die op de variable notes included zijn assigned 
 unique(total[total$notes ==  " RAYYAN-INCLUSION: {\"Caspar\"=>\"Included\"}", c("rayyan", "excluded_rayyan", "included")])
 
 # unique combinaties voor records die op de variable notes Excluded zijn geassigned 
@@ -57,10 +57,10 @@ unique(total$included)
 unique(total$rayyan)
 is.na(asreview_results$included)
 ```
-CONCLUSION: Caspar heeft uitgelegd dat in dit geval 1 juist staat voor excluded asreview en 0 included asreview. 
+*CONCLUSION*: Caspar heeft uitgelegd dat in dit geval 1 juist staat voor excluded asreview en 0 included asreview. 
 
 ```{r}
-# now that I know that I want to check on what criteria the 12 other observations are deleted. Expect this to be based on rayyan = False and included = na but this is does not seem to be the case looking at the criteria below. 
+# now that I know that I want to check on what criteria the 12 other observations are deleted. I expect this to be based on rayyan = False and included = na but this does not seem to be the case looking at the criteria below. 
 unique(asreview_results[is.na(asreview_results$included), c("notes", "rayyan", "excluded_rayyan")])
 
 criteria <- asreview_results[asreview_results$rayyan == "False", ]
