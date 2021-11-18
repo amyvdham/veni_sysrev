@@ -6,6 +6,9 @@
 !checksums.csv
 .Rproj.user
 *.RData
+!clustering100.RData
+!clustering119.RData
+!study2_df_token.Rdata
 *.h5
 bunnies.R
 *.log
