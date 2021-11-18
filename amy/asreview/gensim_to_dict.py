@@ -8,7 +8,7 @@ Created on Wed Sep 15 11:30:35 2021
 
 import gensim
 
-model = gensim.models.Doc2Vec.load("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/asreview_simulation/gensim.model")
+model = gensim.models.Doc2Vec.load("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/asreview/gensim.model")
 
 model.wv.index_to_key
 #model.wv.key_to_index
@@ -25,7 +25,7 @@ dict(itertools.islice(my_dict.items(), 4))
 import csv
 
 # open file for writing, "w" is writing
-w = csv.writer(open("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/asreview_simulation/dict_wordvec.csv", "w"))
+w = csv.writer(open("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/asreview/dict_wordvec_sim.csv", "w"))
 
 # loop over dictionary keys and values
 for key, val in my_dict.items():

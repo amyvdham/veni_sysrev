@@ -15,7 +15,7 @@ Load in the csv with the word vector embeddings obtained from the asreview simul
 
 ```{r}
 # load csv into object 
-dict_wordvecemb <- read.csv("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/asreview_simulation/dict_wordvec.csv", header = FALSE)
+dict_wordvecemb <- read.csv("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/asreview/dict_wordvec_sim.csv", header = FALSE)
 
 # adjust the first column name to word
 colnames(dict_wordvecemb)[1] <- "word"

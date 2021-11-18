@@ -15,7 +15,7 @@ Load in the csv with the word vector embeddings obtained from the asreview simul
 
 ```{r}
 # load csv into object 
-dict_wordvecemb <- read.csv("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/asreview_simulation/dict_wordvec.csv", header = FALSE)
+dict_wordvecemb <- read.csv("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/asreview/dict_wordvec_sim.csv", header = FALSE)
 
 # adjust the first column name to word
 colnames(dict_wordvecemb)[1] <- "word"
@@ -231,7 +231,7 @@ length(unique(df3_mt6$doc_id))
 include_these <- unique(df3_mt6$term)
 include_these <- as.data.table(include_these)
 
-saveRDS(include_these, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/include_these.RData")
+saveRDS(include_these, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/include_these.RData")
 ```
 
 # FILTER FOR CLUSTERING
@@ -282,11 +282,11 @@ length(unique(nounbydoc4$term))
 include_these2 <- unique(nounbydoc4$term)
 include_these2 <- as.data.table(include_these2)
 
-saveRDS(include_these2, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/include_these2.RData")
+saveRDS(include_these2, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/include_these2.RData")
 ```
 
 # Apply more filters.
-Stopwords removal + removal of dots, numbers and maybe also removal of - or splitting words on -. Finally I might also want to consider to apply stemming after using the filter on the feature matrix. But this is something I will look into later. 
+Stopwords removal + removal of dots, numbers and splitting words on -. Finally I might also want to consider to apply stemming after using the filter on the feature matrix. But this is something I will look into later. 
 
 # LEMMA
 ```{r}
@@ -429,7 +429,7 @@ length(unique(nounbydoc5$term))
 include_token <- unique(nounbydoc5$term)
 include_token <- as.data.table(include_token)
 
-saveRDS(include_token, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/include_token.RData")
+saveRDS(include_token, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/include_token.RData")
 
 
 # SAVE INCLUDE_LEMMA
@@ -444,7 +444,7 @@ length(unique(nounbydoc6$term))
 include_lemma <- unique(nounbydoc6$term)
 include_lemma <- as.data.table(include_lemma)
 
-saveRDS(include_lemma, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/include_lemma.RData")
+saveRDS(include_lemma, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/include_lemma.RData")
 ```
 
 # Check manuscript

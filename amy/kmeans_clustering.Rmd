@@ -67,7 +67,7 @@ glove_embedding <- as.matrix(glove_embedding)
 str(glove_embedding)
 
 # save the glove embedding to which the filter is applied so this can be easily loaded into other scripts
-saveRDS(lemma_clean, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/glove_embedding.RData")
+saveRDS(glove_embedding, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/glove_embedding.RData")
 ```
 
 # Look at wich words are close to health

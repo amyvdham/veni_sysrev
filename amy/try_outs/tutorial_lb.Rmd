@@ -16,7 +16,7 @@ https://blogs.rstudio.com/ai/posts/2017-12-22-word-embeddings-with-keras/
 # load data frame with word vector embeddings
 ```{r}
 # load data frame with word vectors into object
-df <- readRDS("featurematrix_asreview.RData")
+df <- readRDS("asreview_embedding_sim.Rdata")
 
 # transform dataframe for working with tidytext and Rtsne
 embedding_mat <- t(df)

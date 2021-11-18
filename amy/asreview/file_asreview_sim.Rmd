@@ -60,7 +60,7 @@ asreview_simulation <- rbind(asreview_sim, subset_irr)
 summary(as.factor(asreview_simulation$included))
 
 # save the dataframe
-write.csv(asreview_simulation, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/asreview_simulation/asreview_simulation.csv", row.names = FALSE)
+write.csv(asreview_simulation, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/asreview/asreview_simulation.csv", row.names = FALSE)
 
 ## asreview_simulation3
 # add the abstract column to asreview_simulation data frame and name new data frame asreview_simulation3
@@ -70,7 +70,7 @@ asreview_simulation3 <- merge(asreview_simulation, asreview_results[, c("doi", "
 summary(as.factor(asreview_simulation3$included))
 
 # save the data frame which includes the abstract column
-write.csv(asreview_simulation3, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/asreview_simulation/asreview_simulation3.csv", row.names = FALSE)
+write.csv(asreview_simulation3, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/asreview/asreview_simulation3.csv", row.names = FALSE)
 ```
 
 Need to create the file again as the file asreview_simulation.csv above did not include the column abstracts. 
@@ -102,7 +102,7 @@ subset_asr <- as.data.table(subset_asr)
 summary(as.factor(subset_asr$included))
 
 # save the new dataframe which also included the column abstracts
-write.csv(subset_asr, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/asreview_simulation/asreview_simulation2.csv", row.names = FALSE)
+write.csv(subset_asr, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/asreview/asreview_simulation2.csv", row.names = FALSE)
 ```
 
 
