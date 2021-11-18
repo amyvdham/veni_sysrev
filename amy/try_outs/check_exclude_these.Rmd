@@ -1,0 +1,70 @@
+---
+title: "Check what filter of methodological terms does"
+Author: "Amy van der Ham"
+date: "11/18/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Check what exactly happens when exclude_terms filter is applied 
+
+```{r}
+# load the manuscript pre-processed file (without textrank algorithm and dict filter having been applied)
+df_before_excl <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/study2_df.RData")
+
+# run part of manuscript in which filter the filter exclude terms is applied. 
+
+# Exclude words
+# make sure to only include nouns and adjectives. 
+df_kw <- df_before_excl[upos %in% c("NOUN", "ADJ"), ]
+# make sure to only include strings that start with a letter. (. -> and end with any character?)
+df_kw <- df_kw[grepl("^[a-zA-Z].", df_kw$lemma), ]
+# exclude methodological terms and similar non-substantive words
+exclude_terms <- readLines("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/exclude_terms.txt")
+
+exclude_these <- unique(unlist(lapply(exclude_terms, grep, x = df_kw$lemma)))
+# exclude_these contains the integers of the words (fit the regular expressions) that are in the exclude_terms file. One of the words that is in there is row 21. 
+
+df_kw[21, "lemma"]
+# -> this is the word child
+
+# remove all those rows that include one of the terms that should be excluded
+df_after_exclusion <- df_kw[-exclude_these, ]
+
+df_kw[df_kw$lemma == "child", ]
+df_after_exclusion[df_after_exclusion$lemma == "child", ]
+
+# In the cluster analysis I found that the word control was still in the embedding so will check on this word 
+df_kw[df_kw$lemma == "control", ]
+df_after_exclusion[df_after_exclusion$lemma == "control", ]
+
+# In the cluster analysis I found that the word analysis was still in the embedding so will check on this word 
+df_kw[df_kw$lemma == "analysis", ]
+df_after_exclusion[df_after_exclusion$lemma == "analysis", ]
+
+# -> It seems that this have correctly been excluded. However I might that because of the splitting at - and / these terms have found there way back into the data frame. 
+# load the data frame that includes the token filter column. 
+check_filter_token <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/study2_df_token.RData")
+
+# check on the word analysis
+check_filter_token[check_filter_token$filter_token == "analysis", c("lemma", "filter_token")]
+# I know see that this is due to the point behind analysis. 
+
+# check on the word finding
+df_kw[df_kw$lemma == "finding", ]
+df_after_exclusion[df_after_exclusion$lemma == "finding", ]
+check_filter_token[check_filter_token$filter_token == "finding", c("token", "lemma", "filter_token")]
+# -> we see that finding is still in there because the exclude_terms filter is applied on lemma the lemma column and not on the token column. The token finding has the lemma find and is therefore not excluded. 
+
+# check on the word finding
+df_kw[df_kw$lemma == "control", ]
+df_after_exclusion[df_after_exclusion$lemma == "control", ]
+check_filter_token[check_filter_token$filter_token == "control", c("token", "lemma", "filter_token")]
+# -> we see that control is still in there because of that ego-control is split on the -, putting control back into the dataframe. 
+```
+
