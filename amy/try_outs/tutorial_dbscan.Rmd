@@ -31,36 +31,18 @@ set.seed(88)
 
 # Load needed datafiles
 ```{r}
-# load existing word embeddings
-# load glove vectors into R
-vectors_glove <- data.table::fread('glove.840B.300d.txt', data.table = F,  encoding = 'UTF-8', quote="") 
+# load glove word embedding file
+glove_embedding <- readRDS("glove_embedding.RData")
 
-# rename the columns
-colnames(vectors_glove) <- c('word',paste('dim',1:300,sep = '_'))
-
-# load data frame with column with selection of words to include in analysis. 
-df_incltoken <- readRDS("filter_token.RData")
-
-# create df in which only the words that we want to be included are kept
-token_embedding <- subset(vectors_glove, word %in% df_incltoken$filter_token)
-```
-
-# Make final GloVE embedding ready for analysis
-```{r}
-# convert first column, word, to row index
-library(tidyverse)
-glove_embedding <- token_embedding %>%
-     remove_rownames() %>%
-     column_to_rownames(var = 'word')
+# check structure
+str(glove_embedding)
 
 # convert dataframe to a matrix
 glove_embedding <- as.matrix(glove_embedding)
 str(glove_embedding)
 ```
 
-
-
-# try - out dbscan tutorial 
+# Try - out dbscan tutorial 
 http://www.sthda.com/english/wiki/wiki.php?id_contents=7940
 ```{r}
 # Compute DBSCAN 
