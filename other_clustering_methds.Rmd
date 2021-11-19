@@ -1,0 +1,131 @@
+---
+title: "Try - out other clustering methods"
+author: "Amy van der Ham"
+date: "11/16/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# load libraries
+library(dplyr)
+library(cluster)
+library(ggplot2)
+library(devtools)
+library(data.table, quietly = TRUE, warn.conflicts = FALSE)
+```
+
+# set.seed prior to running the k-means clustering 
+```{r}
+set.seed(88)
+```
+
+# Load needed datafiles
+```{r}
+# load glove word embedding file
+glove_embedding <- readRDS("glove_embedding.RData")
+
+# check structure
+str(glove_embedding)
+summary(glove_embedding)
+```
+
+# Cluster-medoids clustering 
+from tutorial https://cran.r-project.org/web/packages/textTinyR/vignettes/word_vectors_doc2vec.html. pearson-correlation metric is used for clustering which resembles the cosine distance. 
+
+I have interrupted running the code below because it took to long. 
+```{r}
+library(ClusterR)
+kmedoids_fit <- ClusterR::Cluster_Medoids(glove_embedding, 
+                                 clusters = 100, 
+                                 distance_metric 
+                                 = "pearson_correlation",
+                                 minkowski_p = 1, threads = 6, 
+                                 swap_phase = TRUE, 
+                                 fuzzy = FALSE, verbose = F, seed = 1)
+
+```
+
+## Hierarchical clustering ##
+
+# first tutorial 
+https://www.r-bloggers.com/2019/01/10-tips-for-choosing-the-optimal-number-of-clusters/
+
+# for visualization dendogram 
+https://www.r-graph-gallery.com/29-basic-dendrogram.html
+https://www.gastonsanchez.com/visually-enforced/how-to/2012/10/03/Dendrograms/
+```{r}
+# Compute dissimilarity matrix with euclidean distances
+d <- dist(glove_embedding, method = "euclidean")
+# Hierarchical clustering using Ward's method
+hc_res <- hclust(d, method = "ward.D2" )
+# Cut tree into 10 groups
+grp <- cutree(hc_res, k = 10)
+# Visualize
+plot(hc_res, cex = 0.1) # plot tree
+rect.hclust(hc_res, k = 10, border = 2:5) # add rectangle
+
+
+# this visualization does not work so will try to some in on a part of the dendogram
+# using dendrogram objects
+hcd <- as.dendrogram(hc_res)
+
+# plot dendrogram with some cuts
+# set the margin
+par(mar=c(4,4,2,2))
+
+# -> need to find out which margins are suitable for my plot. 
+
+# Plot the Second group
+plot(hcd[[2]] , main= "zoom on a part of the dendrogram")
+
+
+# try to obtain the results
+split(glove_embedding, grp)
+```
+
+# try to create a PDF
+Still gives an unreadable result. 
+```{r}
+# Open a PDF for plotting; units are inches by default
+pdf("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/dendogram.pdf", width=40, height=15)
+
+# Do some plotting
+plot(hc_res, cex = 0.1) # plot tree
+rect.hclust(hc_res, k = 10, border = 2:5) 
+
+# Close the PDF file's associated graphics device (necessary to finalize the output)
+dev.off()
+
+```
+
+
+
+https://www.r-bloggers.com/2017/12/how-to-perform-hierarchical-clustering-using-r/
+```{r}
+# Compute with agnes (make sure you have the package cluster)
+hc2 <- agnes(glove_embedding, method = "complete")
+# Agglomerative coefficient
+hc2$ac
+```
+
+
+
+# other tutorial
+https://cran.r-project.org/web/packages/textmineR/vignettes/b_document_clustering.html
+```{r}
+dist_object <- dist(glove_embedding)
+hc <- hclust(dist_object, method = "ward.D")
+
+clustering <- cutree(hc, 10)
+
+plot(hc, main = "Hierarchical clustering of 12,734 words from abstracts",
+     ylab = "", xlab = "", yaxt = "n")
+rect.hclust(hc, 10, border = "red")
+```
+
