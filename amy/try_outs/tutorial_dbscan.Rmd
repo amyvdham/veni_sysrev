@@ -36,10 +36,6 @@ glove_embedding <- readRDS("glove_embedding.RData")
 
 # check structure
 str(glove_embedding)
-
-# convert dataframe to a matrix
-glove_embedding <- as.matrix(glove_embedding)
-str(glove_embedding)
 ```
 
 # Try - out dbscan tutorial 
@@ -61,12 +57,48 @@ print(db)
 # cluster membership
 db$cluster
 
+# determine minPts 
+library(SciViews)
+# I have found online that you should set minPts to ln(n) so that is why this is calculated below. 
+ln(12743)
+
 # determining optimal eps value
-dbscan::kNNdistplot(glove_embedding, k =  5)
-abline(h = 0.15, lty = 2)
+dbscan::kNNdistplot(glove_embedding, k =  9)
+abline(h = 7.9, lty = 2)
+# -> based on this plot I would set eps to either 4.6 or 7.9 but not sure if I interpreted it correctly 
 
+# based on the running the codelines above try dbscan with minPts = 9 and eps = 7.9
+db_7.9_9 <- dbscan::dbscan(glove_embedding, 7.9, 9) 
+print(db_7.9_9)
 
-# try dbscan met eps = 4
+db_4.6_9 <- dbscan::dbscan(glove_embedding, 4.6, 9) 
+print(db_4.6_9)
+
+# Create data frame in which the cluster assignment is merged back to rows/word. 
+kw_with_cluster <- as.data.frame(cbind(row.names(glove_embedding), db_4.6_9$cluster))
+names(kw_with_cluster) <- c("word", "dbscan7")
+
+cluster1 <- subset(kw_with_cluster, subset=dbscan7 == 1)
+cluster2 <- subset(kw_with_cluster, subset=dbscan7 == 2)
+cluster3 <- subset(kw_with_cluster, subset=dbscan7 == 3)
+cluster4 <- subset(kw_with_cluster, subset=dbscan7 == 4)
+cluster5 <- subset(kw_with_cluster, subset=dbscan7 == 5)
+cluster6 <- subset(kw_with_cluster, subset=dbscan7 == 6)
+cluster7 <- subset(kw_with_cluster, subset=dbscan7 == 7)
+
+# I have also read somewhere that you should set minPts to 2*dim. Which in our case means 2*300 = 600. Let try what happens if we do that
+# determining optimal eps value
+dbscan::kNNdistplot(glove_embedding, k =  600)
+abline(h = 6.5, lty = 2)
+abline(h = 9.2, lty = 2)
+
+# based on the running the codelines above try dbscan with minPts = 600 and eps = 6.5
+db_6.5_600 <- dbscan::dbscan(glove_embedding, 6.5, 600) 
+print(db_6.5_600)
+# -> geeft 1 cluster en de rest als noise points. 
+
+# TRYOUTS
+# try dbscan met eps = 4 and minPts = 5
 db4 <- dbscan::dbscan(glove_embedding, 4, 5) 
 
 # Print DBSCAN results 
@@ -82,8 +114,16 @@ db_ra <- dbscan::dbscan(glove_embedding, .25, 10)
 print(db_ra)
 
 
+# try dbscan with smaller eps. : eps = 0.10
+db10_4 <- dbscan::dbscan(glove_embedding, 0.10, 4) 
+print(db10_4)
+# -> this small eps value will lead to all the point being noise
+
+# try dbscan with lager eps. : eps = 0.35
+db1.5_4 <- dbscan::dbscan(glove_embedding, 1.5, 10000) 
+print(db1.5_4)
 ```
-The method proposed here consists of computing the he k-nearest neighbor distances in a matrix of points.
+The method proposed here consists of computing the k-nearest neighbor distances in a matrix of points.
 
 The idea is to calculate, the average of the distances of every point to its k nearest neighbors. **The value of k will be specified by the user and corresponds to MinPts.**
 
