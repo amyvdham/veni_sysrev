@@ -26,6 +26,7 @@ library(data.table, quietly = TRUE, warn.conflicts = FALSE)
 set.seed(88)
 ```
 
+## RUN ONCE##
 # Load needed datafiles
 ```{r}
 # load existing word embeddings
@@ -68,6 +69,12 @@ str(glove_embedding)
 
 # save the glove embedding to which the filter is applied so this can be easily loaded into other scripts
 saveRDS(glove_embedding, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/glove_embedding.RData")
+```
+
+## START HERE ##
+```{r}
+# load glove word embedding file
+glove_embedding <- readRDS("glove_embedding.RData")
 ```
 
 # Look at wich words are close to health
