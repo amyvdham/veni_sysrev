@@ -1,0 +1,32 @@
+---
+title: "Figure out hwo the lemma column includes compared to the token column"
+Author: "Amy van der Ham"
+date: "11/25/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# load data frame with filter lemma. 
+df_incllemma <- readRDS("filter_lemma.RData")
+
+# load data frame with filter token. 
+df_incltoken <- readRDS("filter_token.RData")
+
+# compare the two data frames. In token but not in lemma
+token_not_lemma <- subset(df_incltoken, !(filter_token %in% df_incllemma$filter_lemma))
+# looking at this we see that the filter column contains many words ending on a s that are not in the lemma column 
+
+# compare the two data frames. In lemma but not in token
+lemma_not_token <- subset(df_incllemma, !(filter_lemma %in% df_incltoken$filter_token))
+# weird word such as behaviwe.. Also looks like in lemma column ing is removed from some words. 
+```
+
+Ideally I would also want to check this by having one dataframe in which both columns are included so I can see which token matches to which lemma. 
+
+
