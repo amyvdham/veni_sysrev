@@ -75,6 +75,8 @@ saveRDS(glove_embedding, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/
 ```{r}
 # load glove word embedding file
 glove_embedding <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/glove_embedding_lemma.RData")
+
+str(glove_embedding)
 ```
 
 
@@ -90,7 +92,7 @@ find_similar_words <- function(word, embedding_matrix, n = 5) {
 }
 
 # Run function on the word health and see the 25 closest words based on cosine similarity. 
-find_similar_words("mother",glove_embedding,25)
+find_similar_words("mother",glove_embedding,50)
 ```
 
 # Clustering analysis
