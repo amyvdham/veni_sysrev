@@ -1,0 +1,23 @@
+---
+title: "Save filter as .csv for use in Phyton"
+author: "Amy van der Ham"
+date: "12/06/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# load lemma filter 
+filter_lemma <- readRDS("filter_lemma.RData")
+
+# save as .csv
+write.csv(filter_lemma,"/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/words_abstracts.csv", row.names = FALSE)
+
+
+```
+
