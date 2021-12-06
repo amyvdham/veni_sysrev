@@ -1,0 +1,691 @@
+---
+title: "K-means Clustering with adjusted script"
+author: "Amy van der Ham"
+date: "12/02/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Try out k-means clustering on the existing GloVe embedding on which the token filter is applied
+
+```{r}
+# load libraries
+library(dplyr)
+library(cluster)
+library(ggplot2)
+library(devtools)
+library(data.table, quietly = TRUE, warn.conflicts = FALSE)
+```
+
+# set.seed prior to running the k-means clustering 
+```{r}
+set.seed(88)
+```
+
+## RUN ONCE ##
+# Load needed datafiles
+```{r}
+# load existing word embeddings
+# load glove vectors into R
+vectors_glove <- data.table::fread('glove.840B.300d.txt', data.table = F,  encoding = 'UTF-8', quote="") 
+
+# rename the columns
+colnames(vectors_glove) <- c('word',paste('dim',1:300,sep = '_'))
+
+# load data frame with column with selection of words to include in analysis. 
+df_incllemma <- readRDS("filter_lemma.RData")
+
+# create df in which only the words that we want to be included are kept
+lemma_embedding <- subset(vectors_glove, word %in% df_incllemma$filter_lemma)
+
+# check number of unique words
+length(unique((lemma_embedding$word)))
+# 11529 vs. 12743 lost when token filter is applied.  
+
+# non-GloVe: check which words are in the lemma filter but are not in the feature matrix and are therefore lost (unwanted).
+lost_lemma <- subset(df_incllemma, !(filter_lemma %in% lemma_embedding$word))
+# 2182 words lost vs. 2117 words lost when token filter applied. 
+
+length(unique((lemma_embedding$word))) + length(unique((lost_lemma$filter_lemma)))
+# -> 13711. Which is equal to the line of code below. 
+length(unique((df_incllemma$filter_lemma)))
+```
+
+# Make final GloVE embedding ready for analysis
+```{r}
+# convert the first column, word, to row index.
+library(tidyverse)
+glove_embedding <- lemma_embedding %>%
+     remove_rownames() %>%
+     column_to_rownames(var = 'word')
+
+# convert dataframe to a matrix
+glove_embedding <- as.matrix(glove_embedding)
+str(glove_embedding)
+
+# save the glove embedding to which the filter is applied so this can be easily loaded into other scripts
+saveRDS(glove_embedding, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/glove_embedding_lemma.RData")
+```
+
+## START HERE ##
+```{r}
+# load glove word embedding file
+glove_embedding <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/glove_embedding_lemma.RData")
+
+str(glove_embedding)
+```
+
+# Try to load pretrained word2vec embedding 
+```{r}
+library(devtools)
+install_github("mukul13/rword2vec")
+library(rword2vec)
+dist=distance(file_name = "GoogleNews-vectors-negative300.bin",search_word = "king",num = 10)
+dist
+```
+
+
+
+
+# Look at wich words are close to health
+```{r}
+library(text2vec)
+# create function to find similar words based on cosine distance
+find_similar_words <- function(word, embedding_matrix, n = 5) {
+  similarities <- embedding_matrix[word, , drop = FALSE] %>%
+    sim2(embedding_matrix, y = ., method = "cosine")
+  
+  similarities[, 1] %>% sort(decreasing = TRUE) %>% head(n)
+}
+
+# Run function on the word health and see the 25 closest words based on cosine similarity. 
+find_similar_words("white",glove_embedding,50)
+```
+
+# Clustering analysis
+Run kmeans with a value for k of 75, 100, 125, 150 and compare the results. 
+```{r}
+# fit the k-means clustering with 75 clusters
+kmeans_fit75 <- kmeans(glove_embedding, 75, iter.max = 30, nstart = 25)
+
+# fit the k-means clustering with 100 clusters
+kmeans_fit100 <- kmeans(glove_embedding, 100, iter.max = 30, nstart = 25)
+
+# fit the k-means clustering with 125 clusters
+kmeans_fit125 <- kmeans(glove_embedding, 125, iter.max = 30, nstart = 25)
+
+# fit the k-means clustering with 150 clusters
+kmeans_fit150 <- kmeans(glove_embedding, 150, iter.max = 30, nstart = 25)
+```
+
+```{r}
+# fit the k-means clustering with 100 clusters
+k_means_fit <- kmeans(glove_embedding, 100, iter.max = 30, nstart = 25)
+
+# obtain the centroids
+k_means_fit$centers
+
+# look at the size of the clusters
+k_means_fit$size
+min(k_means_fit$size)
+max(k_means_fit$size)
+# -> do not see a cluster with extremely low number of observations. Minimum is 38 and max is 323
+
+# find the cluster to which each word belongs
+k_means_fit$cluster
+
+# The cost function in kmeans is the total sum of the squares
+k_means_fit$totss
+
+# results 
+k_means_fit
+# 26.9% of the total variance in the data set that is explained by the clustering
+```
+
+# Assign cluster number to data frame and create (sub) data frame for each cluster. See if I can make some functions for this as I repeat this piece of code quite often. 
+```{r}
+# create function for making a data frame that contains a column with information on the cluster assignment. 
+create_df_with_clst_assignment <- function(embedding, kmeans_fit) {
+  # Create data frame in which the cluster assignment is merged back to rows/word. 
+words_with_cluster <- as.data.frame(cbind(row.names(embedding), kmeans_fit$cluster))
+# add column names
+names(words_with_cluster) <- c("word", "kmeans100")
+return(words_with_cluster)
+}
+
+# dit heeft denk geen zin zit ik ook te kutten met de naam. 
+
+# create function for making a separate data frame containing the words that belong to one specific cluster
+create_cluster_df <- function(df_with_cluster_assignment, cluster_to_subset) {
+  df_with_cluster_assignment[df_with_cluster_assignment[,2] == 1, ]
+}
+
+
+create_cluster_df(words_with_cluster, 89)
+
+
+
+
+# Create data frame in which the cluster assignment is merged back to rows/word. 
+words_with_cluster <- as.data.frame(cbind(row.names(glove_embedding), kmeans_fit75$cluster))
+# add column names
+names(words_with_cluster) <- c("word", "kmeans100")
+
+# make a df for the first 5 cluster results, quickly "eyeball" results
+cluster1 <- subset(words_with_cluster, subset=kmeans100 == 1)
+cluster2 <- subset(words_with_cluster, subset=kmeans100 == 2)
+cluster3 <- subset(words_with_cluster, subset=kmeans100 == 3)
+cluster4 <- subset(words_with_cluster, subset=kmeans100 == 4)
+cluster5 <- subset(words_with_cluster, subset=kmeans100 == 5)
+
+# Mother 
+# find out in which cluster the word mother is assigned
+words_with_cluster[words_with_cluster$word == "mother", ]
+
+# make a df of cluster 91
+cluster91 <- subset(words_with_cluster, subset = kmeans100 == 91)
+
+# Health
+# find out in which cluster the word health is assigned
+words_with_cluster[words_with_cluster$word == "health", ]
+
+# make a df of cluster 46
+cluster46 <- subset(words_with_cluster, subset=kmeans100 == 46)
+
+# Environment
+# find out in which cluster the word environment is assigned
+words_with_cluster[words_with_cluster$word == "environment", ]
+
+# make a df of cluster 82
+cluster82 <- subset(words_with_cluster, subset=kmeans100 == 82)
+
+# Depression
+# find out to which cluster the word depression is assigned so that I can check if all the forms of depression are in there. 
+words_with_cluster[words_with_cluster$word == "depression", ]
+
+# make a df of cluster 6
+cluster6 <- subset(words_with_cluster, subset=kmeans100 == 6)
+ 
+words_with_cluster[words_with_cluster$word == "depressed", ]
+words_with_cluster[words_with_cluster$word == "depressive", ]
+words_with_cluster[words_with_cluster$word == "nondepressed", ]
+words_with_cluster[words_with_cluster$word == "antidepressant", ]
+
+# kelly
+# find out in which cluster the word Kelly is assigned so that I can check if all names are put together for example. 
+words_with_cluster[words_with_cluster$word == "kelly", ]
+
+# make a df of cluster 24
+cluster24 <- subset(words_with_cluster, subset=kmeans100 == 24)
+
+# cortisol
+# find out in which cluster the word cortisol is assigned 
+words_with_cluster[words_with_cluster$word == "cortisol", ]
+
+# make a df of cluster 60
+cluster60 <- subset(words_with_cluster, subset=kmeans100 == 60)
+
+# empathy
+# find out in which cluster the word empathy is assigned 
+words_with_cluster[words_with_cluster$word == "empathy", ]
+
+# make a df of cluster 38
+cluster38 <- subset(words_with_cluster, subset = kmeans100 == 38)
+
+# check the smallest cluster
+cluster75 <- subset(words_with_cluster, subset = kmeans100 == 75)
+# -> looks like this cluster represents related to India and Indian languages?  
+
+# check the largest cluster
+cluster61 <- subset(words_with_cluster, subset = kmeans100 == 61)
+# -> mostly abbreviations. 
+
+# check another large cluster 
+cluster89 <- subset(words_with_cluster, subset = kmeans100 == 89)
+
+# check another large cluster 
+cluster94 <- subset(words_with_cluster, subset = kmeans100 == 94)
+# -> again mostly abbreviations.
+
+# check another small cluster 
+cluster3 <- subset(words_with_cluster, subset = kmeans100 == 3)
+# -> words that compare things such as easier, fewer, stronger etc. comparative adjective. 
+
+cluster31 <- subset(words_with_cluster, subset = kmeans100 == 31)
+
+# check to which cluster ethnicity belongs
+words_with_cluster[words_with_cluster$word == "ethnicity", ]
+
+# create df of cluster 14
+cluster14 <- subset(words_with_cluster, subset = kmeans100 == 14)
+```
+
+# Some visualization try outs
+```{r}
+k_means_fit$centers
+plot(glove_embedding, col = k_means_fit$cluster == 1)
+points(k_means_fit$center == 2,)
+
+test <- subset(k_means_fit, words_with_cluster$cluster == 1)
+
+# try to add cluster assignment to glove_embedding
+glove_emb_clst <- as.data.frame(glove_embedding)
+
+cluster_assignment <- as.data.frame(cbind(row.names(glove_embedding), k_means_fit$cluster))
+
+# add cluster assignment to dataframe with word vectors
+glove_emb_clst$cluster <- cluster_assignment$V2
+
+embedding_cluster
+
+
+# create plot of separate cluster with tsne
+library(Rtsne)
+embedding_cluster91 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster91$word)
+
+tsne <- Rtsne(embedding_cluster91, dims = 2, perplexity = 25, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# create df that can be used for making the plot. 
+embedding_cluster91_plot <- as.data.frame(embedding_cluster91)
+
+embedding_cluster91_plot$word <- rownames(embedding_cluster91_plot)
+
+# create plot
+#colors = rainbow(length(unique(embedding_cluster91_plot$word)))
+#names(colors) = unique(embedding_cluster91_plot$word)
+
+plot_df <- data.frame(tsne$Y) %>%
+  mutate(
+    word = embedding_cluster91_plot$word,
+  ) 
+p <- ggplot(plot_df, aes(X1, X2)) +
+  geom_text(aes(X1, X2, label = word), size = 3) +
+  xlab("") + ylab("") +
+  ggtitle("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster 91") +
+  theme(legend.position = "none") +
+  theme_minimal()
+p
+
+
+# try to create plot with PCA
+# Dimension reduction using PCA
+res_pca <- prcomp(glove_embedding,  scale = FALSE)
+# Coordinates of individuals
+ind_coord <- as.data.frame(get_pca_ind(res_pca)$coord)
+# Add clusters obtained using the K-means algorithm
+ind_coord$cluster <- factor(k_means_fit$cluster)
+# Add Species groups from the original data sett
+ind_coord$word <- rownames(glove_embedding)
+
+eigenvalue <- round(get_eigenvalue(res_pca), 1)
+variance_percent <- eigenvalue$variance.percent
+
+# subset cluster 91 
+ind_coord_clst91 <- ind_coord[ which(ind_coord$cluster == 91), ]
+
+
+# create plot
+library(ggpubr)
+
+ggscatter(
+  ind_coord_clst91, x = "Dim.1", y = "Dim.2", 
+  label = "word", ellipse = FALSE, ellipse.type = "euclid", legend = "none",
+  ggtheme = theme_minimal(),
+  xlab = paste0("Dim 1 (", variance_percent[1], "% )" ),
+  ylab = paste0("Dim 2 (", variance_percent[2], "% )" )
+) 
+```
+Using PCA to create plot the position of the different words in the plot seem to make less sense to me than when using t-SNE. 
+
+# TSNE of cluster 14 
+```{r}
+# create plot of separate cluster with tsne
+embedding_cluster14 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster14$word)
+
+tsne_14 <- Rtsne(embedding_cluster14, dims = 2, perplexity = 20, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# create df that can be used for making the plot. 
+embedding_cluster14_plot <- as.data.frame(embedding_cluster14)
+
+embedding_cluster14_plot$word <- rownames(embedding_cluster14_plot)
+
+# create plot
+#colors = rainbow(length(unique(embedding_cluster91_plot$word)))
+#names(colors) = unique(embedding_cluster91_plot$word)
+
+plot_df <- data.frame(tsne_14$Y) %>%
+  mutate(
+    word = embedding_cluster14_plot$word,
+  ) 
+p <- ggplot(plot_df, aes(X1, X2)) +
+  geom_text(aes(X1, X2, label = word), size = 3) +
+  xlab("") + ylab("") +
+  ggtitle("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster 14") +
+  theme(legend.position = "none") +
+  theme_minimal()
+p
+```
+
+# TSNE of cluster 31
+```{r}
+# create plot of separate cluster with tsne
+embedding_cluster31 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster31$word)
+
+tsne_31 <- Rtsne(embedding_cluster31, dims = 2, perplexity = 18, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# create df that can be used for making the plot. 
+embedding_cluster31_plot <- as.data.frame(embedding_cluster31)
+
+embedding_cluster31_plot$word <- rownames(embedding_cluster31_plot)
+
+# create plot
+#colors = rainbow(length(unique(embedding_cluster91_plot$word)))
+#names(colors) = unique(embedding_cluster91_plot$word)
+
+plot_df <- data.frame(tsne_31$Y) %>%
+  mutate(
+    word = embedding_cluster31_plot$word,
+  ) 
+p <- ggplot(plot_df, aes(X1, X2)) +
+  geom_text(aes(X1, X2, label = word), size = 3) +
+  xlab("") + ylab("") +
+  ggtitle("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster 31") +
+  theme(legend.position = "none") +
+  theme_minimal() +
+  xlim(-28, 25)
+p
+```
+
+## Apply cluster analysis within a cluster (cluster 46) ##
+```{r}
+# create new subset data frame
+embedding_cluster46 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster46$word)
+
+# fit k-means
+k_means_fit3_cluster46 <- kmeans(embedding_cluster46, 3, iter.max = 30, nstart = 25)
+
+# look at the results
+# look at the size of the clusters
+k_means_fit3_cluster46$size
+k_means_fit3_cluster46
+
+# Create data frame in which the merge cluster assignment back to rows/word. 
+words_with_cluster46_3 <- as.data.frame(cbind(row.names(embedding_cluster46), k_means_fit3_cluster46$cluster))
+# add column names
+names(words_with_cluster46_3) <- c("word", "kmeans3")
+
+# make a df for the 3 cluster results
+cluster46_1 <- subset(words_with_cluster46_3, subset=kmeans3 == 1)
+cluster46_2 <- subset(words_with_cluster46_3, subset=kmeans3 == 2)
+cluster46_3 <- subset(words_with_cluster46_3, subset=kmeans3 == 3)
+
+# load library for visualization
+library(factoextra)
+
+# set max overlap to Inf to show all the labels in the plot. This does however make the plot unreadable
+#options(ggrepel.max.overlaps = Inf)
+
+# visualize the k-means (with k = 3) clusters
+fviz_cluster(k_means_fit3_cluster46, data = embedding_cluster46,
+palette = c("#2E9FDF", "#00AFBB", "#E7B800", "#FC4E07"),
+ellipse.type = "euclid", # Concentration ellipse
+star.plot = TRUE, # Add segments from centroids to items
+repel = TRUE, # Avoid label overplotting (slow)
+ggtheme = theme_minimal()
+)
+
+##  DETERMINING THE VALUE OF K
+library(factoextra)
+# Elbow method
+fviz_nbclust(embedding_cluster46, kmeans, iter.max = 30, nstart = 25, method = "wss", k.max = 15) + geom_vline(xintercept = 11, linetype = 2) + # add line for better visualisation. 
+  labs(subtitle = "Elbow method") # add subtitle
+# -> not sure I interpret it correctly but would say the knee is at 6, 10 or 11?   
+ 
+# Silhouette method
+fviz_nbclust(embedding_cluster46, kmeans, iter.max = 30, nstart = 25, method = "silhouette", k.max = 15) +
+  labs(subtitle = "Silhouette method")
+# -> suggests setting k to 11 clusters
+
+# Note that I have set nboot really low for obtaining a quick result.  
+# Gap statistic
+fviz_nbclust(embedding_cluster46, kmeans,
+  iter.max = 30,
+  nstart = 25,
+  method = "gap_stat",
+  k.max = 15,
+  nboot = 5 # reduce it for lower computation time (but less precise results)
+) +
+  labs(subtitle = "Gap statistic method")
+# -> suggests 1 cluster and second best option is 10. 
+
+# try to determine number of cluster with NbClust package
+library(NbClust)
+nbclust_out <- NbClust(
+  data = embedding_cluster46,
+  distance = "euclidean",
+  min.nc = 2, # minimum number of clusters
+  max.nc = 15, # maximum number of clusters
+  method = "kmeans", # one of: "ward.D", "ward.D2", "single", "complete", "average", "mcquitty", "median", "centroid", "kmeans"
+  index = "silhouette"
+)
+
+nbclust_out
+# -> this gives a different result than the shiloutte plot. I wonder what the reason for this is. 
+
+# Another package for determine number of clusters
+library(ClusterR) 
+
+Optimal_Clusters_KMeans(embedding_cluster46, 
+              max_clusters = 15, 
+              criterion = "distortion_fK",
+              fK_threshold = 0.85, 
+              num_init = 3, 
+              max_iters = 50,
+              initializer = "kmeans++",
+              tol = 1e-04, 
+              plot_clusters = TRUE,
+              verbose = T, 
+              tol_optimal_init = 0.3, 
+              seed = 1)
+# -> do not really know how to interpret this. 
+
+Optimal_Clusters_KMeans(embedding_cluster46, max_clusters = 15, plot_clusters = T, criterion = 'silhouette')
+# -> 
+
+# RUN ANALYSIS WITH 10 CLUSTERS
+# fit kmeans with 10 clusters
+k_means_fit10_cluster46 <- kmeans(embedding_cluster46, 10, iter.max = 30, nstart = 25)
+
+library(cluster)
+sil <- silhouette(k_means_fit10_cluster46$cluster, dist(embedding_cluster46))
+fviz_silhouette(sil)
+# -> the average silhouette width is low and there are quite some negative values. 
+
+# # Create data frame in which the cluster assignment is merged back to rows/words.
+words_with_cluster46_10 <- as.data.frame(cbind(row.names(embedding_cluster46), k_means_fit10_cluster46$cluster))
+# add column names
+names(words_with_cluster46_10) <- c("word", "kmeans10")
+
+# cluster with highest silhouette value
+cluster3_highestsil <- subset(words_with_cluster46_10, subset = kmeans10 == 3)
+
+# cluster with second highest silhouette value
+cluster7_2nd_highestsil <- subset(words_with_cluster46_10, subset = kmeans10 == 7) 
+
+library(RColorBrewer)
+
+# visualize the k-means (with k = 10) clusters
+fviz_cluster(k_means_fit10_cluster46, data = embedding_cluster46,
+palette = "Spectral",
+ellipse.type = "euclid", # Concentration ellipse
+star.plot = TRUE, # Add segments from centroids to items
+repel = TRUE, # Avoid label overplotting (slow)
+ggtheme = theme_minimal()
+)
+```
+
+## Apply cluster analysis within a cluster (cluster 37) ##
+The resulting clusters do not really make sense to me. 
+```{r}
+# create new subset data frame
+embedding_cluster37 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster37$word)
+
+# Silhouette method for determining k
+fviz_nbclust(embedding_cluster37, kmeans, method = "silhouette") +
+  labs(subtitle = "Silhouette method")
+# -> suggests 2 or 5 as value for k
+
+# fit k-means
+k_means_fit5_cluster37 <- kmeans(embedding_cluster37, 5, iter.max = 30, nstart = 25)
+
+# look at the size of the clusters
+k_means_fit5_cluster37$size
+
+# look at the results
+k_means_fit5_cluster37 
+
+# Create data frame in which the merge cluster assignment back to rows/word. 
+words_with_cluster37_5 <- as.data.frame(cbind(row.names(embedding_cluster37), k_means_fit5_cluster37$cluster))
+# add column names
+names(words_with_cluster37_5 ) <- c("word", "kmeans5")
+
+# make a df for the first 3 clusters
+cluster37_1 <- subset(words_with_cluster37_5, subset=kmeans5 == 1)
+cluster37_2 <- subset(words_with_cluster37_5, subset=kmeans5 == 2)
+cluster37_3 <- subset(words_with_cluster37_5, subset=kmeans5 == 3)
+
+# visualize the k-means (with k = 3) clusters
+fviz_cluster(k_means_fit5_cluster37, data = embedding_cluster37,
+palette = c("#2E9FDF", "#00AFBB", "#E7B800", "#FC4E07", "#8F00FF"),
+ellipse.type = "euclid", # Concentration ellipse
+star.plot = TRUE, # Add segments from centroids to items
+repel = TRUE, # Avoid label overplotting (slow)
+ggtheme = theme_minimal()
+)
+```
+
+
+##CLUSTER ANALYSIS DETERMINING THE NUMBER OF CLUSTER FOR FULL DATASET##
+# Determining the value of the parameter K for the glove_embedding matrix
+```{r}
+wssplot <- function(data, nc=15, seed=1234){
+  wss <- (nrow(data)-1)*sum(apply(data,2,var))
+  for (i in 2:nc){
+    set.seed(seed)
+    wss[i] <- sum(kmeans(data, centers=i, iter.max = 30)$withinss)}
+  plot(1:nc, wss, type="b", xlab="Number of Clusters",
+       ylab="Within groups sum of squares")}
+
+wssplot(glove_embedding, nc=150)
+```
+
+-> looks like the elbow is at 20-24? We see a small increase in wss at k = 140.
+# set seed again
+```{r}
+set.seed(88)
+```
+
+# Using the package factoextra
+https://statsandr.com/blog/clustering-analysis-k-means-and-hierarchical-clustering-by-hand-and-in-r/#silhouette-method
+```{r}
+# Elbow method
+fviz_nbclust(glove_embedding, kmeans, iter.max = 30, nstart = 25, method = "wss", k.max = 150) +
+  geom_vline(xintercept = 140, linetype = 2) +
+  geom_vline(xintercept = 138, linetype = 2) +
+  geom_vline(xintercept = 139, linetype = 2) +
+  labs(subtitle = "Elbow method") # add subtitle
+
+# geom_vline(xintercept = 4, linetype = 2) + # add line for better visualisation. I do not see a clear knee location in the plot. 
+
+# Silhouette method
+fviz_nbclust(glove_embedding, kmeans(iter.max = 30, nstart = 25), method = "silhouette", k.max = 150) +
+  labs(subtitle = "Silhouette method")
+
+# Takes to long so did not run this. Could turn nboot down. 
+# Gap statistic
+fviz_nbclust(glove_embedding, kmeans,
+  nstart = 25,
+  method = "gap_stat",
+  nboot = 500 # reduce it for lower computation time (but less precise results)
+) +
+  labs(subtitle = "Gap statistic method")
+
+
+# try to determine number of cluster with NbClust package
+library(NbClust)
+nbclust_out <- NbClust(
+  data = glove_embedding,
+  distance = "euclidean",
+  min.nc = 2, # minimum number of clusters
+  max.nc = 150, # maximum number of clusters
+  method = "kmeans", # one of: "ward.D", "ward.D2", "single", "complete", "average", "mcquitty", "median", "centroid", "kmeans"
+  index = "silhouette"
+)
+# -> takes a really long time and gives converge warning. 
+nbclust_out
+```
+
+# K-means with K = 140
+In the elbow plot I see wss going up a little bit again at a value of k at around 140. Therefore I decided to run kmeans with k = 140. But this is rather arbitrary.  
+
+```{r}
+# fit the k-means clustering with 119 clusters
+k_means_fit119 <- kmeans(glove_embedding, 119, iter.max = 30, nstart = 25)
+
+# look at the size of the clusters
+k_means_fit119$size
+min(k_means_fit119$size)
+max(k_means_fit119$size)
+# Examine clusters that have significantly fewer observations than other clusters. Clusters that have very few observations may contain outliers or unusual observations with unique characteristics. No clusters with extreme low number of observations. Minimum is 34 and maximum is 246
+
+# The cost function in kmeans is the total sum of the squares
+k_means_fit119$totss
+
+# check results 
+k_means_fit119
+# -> 27.8% of the total variance in the data set that is explained by the clustering. 1% more than with 100 clusters
+
+# Create data frame in which the merge cluster assignment back to rows/word. 
+words_with_cluster119 <- as.data.frame(cbind(row.names(glove_embedding), k_means_fit119$cluster))
+
+# add column names
+names(words_with_cluster119) <- c("word", "kmeans119")
+
+# save this data frame which contains a column with words and a column with to which cluster they belong
+saveRDS(words_with_cluster119, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/clustering119.RData")
+
+# check the largest cluster with 246 observations
+cluster119_55 <- subset(words_with_cluster119, 
+                   subset=kmeans119 == 55)
+# -> cluster includes all sorts of abbreviations 
+
+# check the smallest cluster with 34 observations
+cluster119_32 <- subset(words_with_cluster119, 
+                   subset=kmeans119 == 32)
+# -> contains single letters and different units of measurement. 
+
+# Health
+# find out in which cluster the word health is assigned
+words_with_cluster119[words_with_cluster119$word == "health", ]
+
+# make a df of cluster 85
+cluster119_85 <- subset(words_with_cluster119, 
+                    subset=kmeans119 == 85)
+
+# Depression
+# find out in which cluster the word depression is assigned
+words_with_cluster119[words_with_cluster119$word == "depression", ]
+
+# make a df of cluster 10
+cluster119_10 <- subset(words_with_cluster119, 
+                    subset=kmeans119 == 10)
+# -> this cluster also contains the word depressive but not the word depressed. 
+
+words_with_cluster119[words_with_cluster119$word == "depressed", ]
+words_with_cluster119[words_with_cluster119$word == "nondepressed", ]
+words_with_cluster119[words_with_cluster119$word == "antidepressant", ]
+```
