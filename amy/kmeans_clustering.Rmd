@@ -47,7 +47,7 @@ length(unique((token_embedding$word)))
 # 12743
 
 # non-GloVe: check which words are in the token filter but are not in the feature matrix and are therefore lost (unwanted).
-lost_tokens <- subset(df_incltoken, !(filter_token %in% token_embedding $word))
+lost_tokens <- subset(df_incltoken, !(filter_token %in% token_embedding$word))
 # 2117 words lost
 
 length(unique((token_embedding$word))) + length(unique((lost_tokens$filter_token)))
