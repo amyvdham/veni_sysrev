@@ -12,11 +12,17 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-# load lemma filter 
-filter_lemma <- readRDS("filter_lemma.RData")
+# load final filter 
+final_filter <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/final_filter.RData")
 
 # save as .csv
-write.csv(filter_lemma,"/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/words_abstracts.csv", row.names = FALSE)
+write.csv(filter_lemma,"/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/final_filter.csv", row.names = FALSE)
+
+# load bigrams filter
+bigrams_filter <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/bigrams_filter.RData")
+
+# save as .csv
+write.csv(filter_lemma,"/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/bigrams_filter.csv", row.names = FALSE)
 ```
 
 
@@ -79,7 +85,7 @@ summary(df_w2vemb)
 ```{r}
 w2v_embedding <- df_w2vemb
 
-glove_embedding <-  readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/glove_embedding_lemma.RData")
+glove_embedding <-  readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/glove_embedding_final.RData")
 
 glv_embedding <- as.data.frame(glove_embedding)
 
