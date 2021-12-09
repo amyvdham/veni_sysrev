@@ -31,7 +31,6 @@ library(topicmodels)
 library(udpipe)
 library(slam)
 library(tidytext)
-library(ggplot2)
 library(textrank)
 library(data.table, quietly = TRUE, warn.conflicts = FALSE)
 source("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/word_functions.R")
@@ -193,9 +192,12 @@ bigrams_data <- melt(lemma_clean, id.var = 1:14, variable.name = 'lemma_or_keywo
 # remove NA's
 bigrams_data <- bigrams_data[!is.na(bigrams_data$value), ]
 
-# SAVE filter with lemma
+# SAVE filter with bigrams
 # create data frame with column doc_id term and add a term frequency per doc column column
-nounbydoc_bigrams <- bigrams_data[, list(freq = .N), by = list(doc_id = doc_id, term = value)]
+nounbydoc_bigrams <- bigrams_data[, 
+                                  list(freq = .N), 
+                                  by = list(doc_id = doc_id, 
+                                            term = value)]
 
 # check number of unique words and documents. 
 length(unique(nounbydoc_bigrams$doc_id)) 
@@ -206,6 +208,6 @@ length(unique(nounbydoc_bigrams$term))
 filter_bigrams <- unique(nounbydoc_bigrams$term)
 filter_bigrams <- as.data.table(filter_bigrams)
 
-saveRDS(filter_lemma, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/bigrams_filter.RData")
+saveRDS(filter_bigrams, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/bigrams_filter.RData")
 ```
 
