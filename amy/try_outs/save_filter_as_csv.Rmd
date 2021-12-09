@@ -16,13 +16,13 @@ knitr::opts_chunk$set(echo = TRUE)
 final_filter <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/final_filter.RData")
 
 # save as .csv
-write.csv(filter_lemma,"/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/final_filter.csv", row.names = FALSE)
+write.csv(final_filter,"/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/final_filter.csv", row.names = FALSE)
 
 # load bigrams filter
 bigrams_filter <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/bigrams_filter.RData")
 
 # save as .csv
-write.csv(filter_lemma,"/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/bigrams_filter.csv", row.names = FALSE)
+write.csv(bigrams_filter,"/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/bigrams_filter.csv", row.names = FALSE)
 ```
 
 
