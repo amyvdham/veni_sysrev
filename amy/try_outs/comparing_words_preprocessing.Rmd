@@ -64,6 +64,7 @@ summary(df_wordvecemb)
 # -> no missing values. 
 ```
 
+## STUDY 2 ##
 ## RUN ONCE
 Study 2: code below shows words that are delete from abstracts before applying 
 ```{r}
@@ -105,17 +106,29 @@ df <- as.data.table(udp_res)
 saveRDS(df, "study2_df.RData")
   
 # Keyword extraction ------------------------------------------------------
+# 9 december: load this file for later check on what exactly happens with exclude these filter. 
+df <- readRDS("study2_df.RData")
 
 # Exclude words
 # make sure to only include nouns and adjectives. 
 df_kw <- df[upos %in% c("NOUN", "ADJ"), ]
 # make sure to only include strings that start with a letter. (. -> and end with any character?)
 df_kw <- df_kw[grepl("^[a-zA-Z].", df_kw$lemma), ]
+
+## check existence of terms that should be removed after exclude_these filter 
+df_kw[df_kw$lemma == "student", "lemma"]
+df_kw[df_kw$lemma == "students", "lemma"]
+
 # exclude methodological terms and similar non-substantive words
 exclude_terms <- readLines("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/exclude_terms.txt")
 exclude_these <- unique(unlist(lapply(exclude_terms, grep, x = df_kw$lemma)))
 df_kw <- df_kw[-exclude_these, ]
 saveRDS(df_kw, "study2_df_kw.RData")
+
+## check if these terms ar indeed excluded after applying filter
+df_kw[df_kw$lemma == "student", "lemma"]
+df_kw[df_kw$lemma == "students", "lemma"]
+# -> can not be found as expected. 
 
 # Dit is een check  
 # No numeric values
@@ -123,13 +136,14 @@ saveRDS(df_kw, "study2_df_kw.RData")
 # df_kw$lemma[nchar(df_kw$lemma) == 3]
 
 # textrank is used for identifying more meaningful units of analysis
-# DO NOT UNDERSTAND WHY upos %in% c("NOUN", "ADJ") line is applied again here because I thought this was already used to create df_kw. 
+# DO NOT UNDERSTAND WHY upos %in% c("NOUN", "ADJ") line is applied again here because I thought this was already used to create df_kw in the first place. 
 kw_tr <- textrank_keywords(x = df_kw$lemma[df_kw$upos %in% c("NOUN", "ADJ")], ngram_max = 3, sep = " ")
   saveRDS(kw_tr, "study2_textrank.RData")
 
 # Merge back with original data
 df_kw$keyword <- txt_recode_ngram(df_kw$lemma, compound = kw_tr$keywords$keyword, ngram = kw_tr$keywords$ngram, sep = " ")
 
+# voor het runnen van deze lijn below is het word data. nog een keyword, na het runnen niet meer. 
 df_kw$keyword[!df_kw$keyword %in% kw_tr$keywords$keyword] <- NA
   
 # NOTE this time we do not want to apply the dictionary filter. 
