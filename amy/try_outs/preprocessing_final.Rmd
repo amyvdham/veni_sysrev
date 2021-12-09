@@ -1,0 +1,211 @@
+---
+title: "Preprocces data before applying filter on embedding"
+Author: "Amy van der Ham"
+date: "12/09/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## RUN ONCE
+Code below shows the pre-processing that has been done in the original manuscript. I follow the same steps but do no run the text rank algorithm and do not apply the dictionary filter. 
+
+Things that are applied: 
+- to lower
+- udpipe ("english"): (stopwords, POS, stemming, nouns and adjectives)
+- include only strings that start with a letter
+- exclusion filter (removing methodological terms and similar non-substantive words)
+
+```{r}
+# load libraries
+library(stringr)
+library(udpipe)
+library(Matrix)
+library(yaml)
+library(Rmpfr)
+library(topicmodels)
+library(udpipe)
+library(slam)
+library(tidytext)
+library(ggplot2)
+library(textrank)
+library(data.table, quietly = TRUE, warn.conflicts = FALSE)
+source("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/word_functions.R")
+source("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/circle2.R")
+
+recs <- data.table(read.csv("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/recs_final.csv"))
+recs[, "doc" := 1:nrow(recs)]
+
+# convert abstract column to lower case
+recs$AB <- tolower(recs$AB)
+
+# download English udpipe model
+ud_model <- udpipe_download_model(language = "english")
+# load the language model - NOTE that this is a different (more recent) version than the one Caspar used. 
+ud_model <- udpipe_load_model("english-ewt-ud-2.5-191206.udpipe")
+ud_model <- udpipe_load_model(ud_model$file)
+
+# apply to abstract of recs data table
+udp_res <- udpipe_annotate(ud_model, x = recs$AB, doc_id = recs$doc)
+
+# convert to data table and save as .Rdata
+df <- as.data.table(udp_res)
+saveRDS(df, "study2_df.RData")
+  
+# Keyword extraction ------------------------------------------------------
+
+# Exclude words
+# make sure to only include nouns and adjectives. 
+df_kw <- df[upos %in% c("NOUN", "ADJ"), ]
+# make sure to only include strings that start with a letter. (. -> and end with any character?)
+df_kw <- df_kw[grepl("^[a-zA-Z].", df_kw$lemma), ]
+# exclude methodological terms and similar non-substantive words
+exclude_terms <- readLines("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/exclude_terms.txt")
+exclude_these <- unique(unlist(lapply(exclude_terms, grep, x = df_kw$lemma)))
+df_kw <- df_kw[-exclude_these, ]
+saveRDS(df_kw, "study2_df_kw.RData")
+```
+
+## START HERE
+Since I have already once run the code above once, I can now just call the saved R.Data files. Note that the R.Data files might differ from the once in the original manuscript due to the udpipe being a different version.
+
+
+# CREATE FILTER FOR CLUSTERING
+Apply more pre - processing steps. 
+  - Split the string values at - 
+  - Split the string values at /
+  - Remove non-alphanumeric characters 
+  - Remove numbers 
+  - Remove stopwords
+  - apply exclusion filter again
+
+## LEMMA ##
+```{r}
+# load the manuscript pre-processed file (without textrank algorithm and dict filter having been applied)
+df_check <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/study2_df_kw.RData")
+
+# check number of unique words before applying more filters
+length(unique(df_check$lemma))
+# 15274
+
+# create data frame on which preprocessing will be applied 
+lemma_clean <- df_check
+
+# add lemma_filter column to dataframe so we keep the original column and filter can be applied on the new column. 
+lemma_clean$filter_lemma <- df_check$lemma
+
+# SPLIT AT - 
+library(splitstackshape)
+# Split words in lemma column on the - 
+lemma_clean <- cSplit(lemma_clean, "filter_lemma", "-", direction = "long")
+
+# check results by looking at a term that contains - in original lemma column on which the filter has not been applied. 
+lemma_clean[lemma_clean$lemma == "non-risk", c("lemma", "filter_lemma", "doc_id")]
+
+# SPLIT AT /
+# Split words in lemma column on the /
+lemma_clean <- cSplit(lemma_clean, "filter_lemma", "/", direction = "long")
+
+# check results by looking at term that contains / in original lemma column on which the filter has not been applied. 
+lemma_clean[lemma_clean$lemma == "police/judicial", c("lemma", "filter_lemma", "doc_id")]
+
+# REMOVE NON-ASCII CHARACTERS 
+# remove all the non-alphanumeric characters from words in lemma column
+lemma_clean$filter_lemma <- str_replace_all(lemma_clean$filter_lemma, "[^[:alnum:]]", "")
+
+# check results by looking at term that contains a non-ASCII character in original lemma column on which the filter has not been applied. 
+lemma_clean[lemma_clean$lemma == "p=.47", c("lemma", "filter_lemma", "doc_id")]
+
+# remove all the digit characters from words in lemma column
+lemma_clean$filter_lemma <- gsub("[0-9]+" ,"", lemma_clean$filter_lemma)
+
+# check results by looking at term that contains a number in the original lemma column on which the filter has not been applied. 
+lemma_clean[lemma_clean$lemma == "p=.47", c("lemma", "filter_lemma", "doc_id")]
+
+# check number of unique words after applying more filters
+length(unique(lemma_clean$filter_lemma))
+# 13932
+
+# REMOVING STOPWORDS.
+# use stopwords from tidytext. 
+library(tidyverse)
+library(tidytext)
+lemma_clean <- lemma_clean %>%
+  anti_join(stop_words, by= c("filter_lemma" = "word"))
+# Note that the stopwords are removed from the dataset so this also effects the original lemma column. 
+
+# check number of unique words after removing stop words
+length(unique(lemma_clean$filter_lemma))
+# -> 13620: 312 unique words dropped 
+
+exclude_these2 <- unique(unlist(lapply(exclude_terms, grep, x = lemma_clean$filter_lemma)))
+lemma_clean <- lemma_clean[-exclude_these2, ]
+
+# check number of unique words after excluding terms
+length(unique(lemma_clean$filter_lemma))
+# -> 13524: 96 unique words dropped 
+
+# SAVE COMPLETE DATA FRAME INCLUDING FILTER_LEMMA COLUMN 
+saveRDS(lemma_clean, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/study2_df_lemma.RData")
+```
+
+# SAVE DATAFRAME WITH ONLY THE FILTER COLUMN
+I also save a date frame with only the filter column and keeping only the unique terms. So that I can easily use that to apply the filter on the glove (and word2vec) embedding data. 
+
+```{r}
+# SAVE FILTER_LEMMA
+# create data frame with column doc_id term and add a term frequency per doc column column
+nounbydoc_lemma <- lemma_clean[, list(freq = .N), by = list(doc_id = doc_id, term = filter_lemma)]
+
+# check number of unique words and documents. 
+length(unique(nounbydoc_lemma$doc_id)) 
+length(unique(nounbydoc_lemma$term)) 
+
+# check 
+# create a data frame with one column including the unique terms
+filter_lemma <- unique(nounbydoc_lemma$term)
+filter_lemma <- as.data.table(filter_lemma)
+
+saveRDS(filter_lemma, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/final_filter.RData")
+```
+
+# WORD2VEC FILTER (INCLUDING BIGRAMS)
+Create filter in which bigrams are also include to see if these can be found in the word2vec embedding. 
+
+```{r}
+kw_tr <- textrank_keywords(x =  lemma_clean$filter_lemma[lemma_clean$upos %in% c("NOUN", "ADJ")], ngram_max = 2, sep = "_")
+
+# merge bi grams to dataset 
+lemma_clean$keyword <- txt_recode_ngram(lemma_clean$filter_lemma, compound = kw_tr$keywords$keyword, ngram = kw_tr$keywords$ngram, sep = "_")
+
+# investigating text rank results
+stats <- subset(kw_tr$keywords, ngram > 1 & freq >= 5)
+head(stats, 30)
+
+# stack the columns lemma_filter and keyword on top of each other
+library(reshape2)
+bigrams_data <- melt(lemma_clean, id.var = 1:14, variable.name = 'lemma_or_keyword')
+
+# remove NA's
+bigrams_data <- bigrams_data[!is.na(bigrams_data$value), ]
+
+# SAVE filter with lemma
+# create data frame with column doc_id term and add a term frequency per doc column column
+nounbydoc_bigrams <- bigrams_data[, list(freq = .N), by = list(doc_id = doc_id, term = value)]
+
+# check number of unique words and documents. 
+length(unique(nounbydoc_bigrams$doc_id)) 
+length(unique(nounbydoc_bigrams$term)) 
+
+# check 
+# create a data frame with one column including the unique terms
+filter_bigrams <- unique(nounbydoc_bigrams$term)
+filter_bigrams <- as.data.table(filter_bigrams)
+
+saveRDS(filter_lemma, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/bigrams_filter.RData")
+```
+
