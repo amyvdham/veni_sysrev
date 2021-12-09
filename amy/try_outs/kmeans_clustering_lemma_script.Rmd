@@ -37,29 +37,29 @@ vectors_glove <- data.table::fread('glove.840B.300d.txt', data.table = F,  encod
 colnames(vectors_glove) <- c('word',paste('dim',1:300,sep = '_'))
 
 # load data frame with column with selection of words to include in analysis. 
-df_incllemma <- readRDS("filter_lemma.RData")
+df_filter <- readRDS("final_filter.RData")
 
 # create df in which only the words that we want to be included are kept
-lemma_embedding <- subset(vectors_glove, word %in% df_incllemma$filter_lemma)
+filtered_embedding <- subset(vectors_glove, word %in% df_filter$filter_lemma)
 
 # check number of unique words
-length(unique((lemma_embedding$word)))
-# 11529 vs. 12743 lost when token filter is applied.  
+length(unique((filtered_embedding$word)))
+# 11342 unique words
 
-# non-GloVe: check which words are in the lemma filter but are not in the feature matrix and are therefore lost (unwanted).
-lost_lemma <- subset(df_incllemma, !(filter_lemma %in% lemma_embedding$word))
-# 2182 words lost vs. 2117 words lost when token filter applied. 
+# non-GloVe: check which words are in the final filter but are not in the glove embedding data and are therefore lost (unwanted).
+lost_words <- subset(df_filter, !(filter_lemma %in% filtered_embedding$word))
+# 2182 words lost  
 
-length(unique((lemma_embedding$word))) + length(unique((lost_lemma$filter_lemma)))
-# -> 13711. Which is equal to the line of code below. 
-length(unique((df_incllemma$filter_lemma)))
+length(unique((filtered_embedding$word))) + length(unique((lost_words$filter_lemma)))
+# -> 13524. Which is equal to the line of code below. 
+length(unique((df_filter$filter_lemma)))
 ```
 
 # Make final GloVE embedding ready for analysis
 ```{r}
 # convert the first column, word, to row index.
 library(tidyverse)
-glove_embedding <- lemma_embedding %>%
+glove_embedding <- filtered_embedding %>%
      remove_rownames() %>%
      column_to_rownames(var = 'word')
 
@@ -68,7 +68,7 @@ glove_embedding <- as.matrix(glove_embedding)
 str(glove_embedding)
 
 # save the glove embedding to which the filter is applied so this can be easily loaded into other scripts
-saveRDS(glove_embedding, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/glove_embedding_lemma.RData")
+saveRDS(glove_embedding, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/glove_embedding_final.RData")
 ```
 
 ## START HERE ##
