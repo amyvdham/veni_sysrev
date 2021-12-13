@@ -74,20 +74,20 @@ saveRDS(glove_embedding, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/
 ## START HERE ##
 ```{r}
 # load glove word embedding file
-glove_embedding <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/glove_embedding_lemma.RData")
+glove_embedding <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/glove_embedding_final.RData")
 
 str(glove_embedding)
-```
 
-# Try to load pretrained word2vec embedding 
-```{r}
-library(devtools)
-install_github("mukul13/rword2vec")
-library(rword2vec)
-dist=distance(file_name = "GoogleNews-vectors-negative300.bin",search_word = "king",num = 10)
-dist
-```
+# load glove word embedding file
+w2v_embedding <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/w2v_embedding.RData")
 
+str(w2v_embedding)
+
+# load glove word embedding file
+w2v_bigrams_embedding <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/w2v_bigrams_embedding.RData")
+
+str(w2v_bigrams_embedding)
+```
 
 
 
@@ -104,13 +104,22 @@ find_similar_words <- function(word, embedding_matrix, n = 5) {
 
 # Run function on the word health and see the 25 closest words based on cosine similarity. 
 find_similar_words("white",glove_embedding,50)
+find_similar_words("white",w2v_embedding,50)
+find_similar_words("white",w2v_bigrams_embedding,50)
+find_similar_words("mental_health",w2v_bigrams_embedding,50)
 ```
 
 # Clustering analysis
-Run kmeans with a value for k of 75, 100, 125, 150 and compare the results. 
+Run kmeans with a value for k of 75, 100, 125, 150 and compare the results. Run this for each embedding  
 ```{r}
-# fit the k-means clustering with 75 clusters
+# fit the k-means clustering with 75 clusters, glove
 kmeans_fit75 <- kmeans(glove_embedding, 75, iter.max = 30, nstart = 25)
+
+# fit the k-means clustering with 75 clusters, w2v
+kmeans_fit75_w2v <- kmeans(w2v_embedding, 75, iter.max = 30, nstart = 25)
+
+# fit the k-means clustering with 75 clusters, w2v bigrams
+kmeans_fit75_bigr <- kmeans(w2v_bigrams_embedding, 75, iter.max = 30, nstart = 25)
 
 # fit the k-means clustering with 100 clusters
 kmeans_fit100 <- kmeans(glove_embedding, 100, iter.max = 30, nstart = 25)
@@ -122,28 +131,54 @@ kmeans_fit125 <- kmeans(glove_embedding, 125, iter.max = 30, nstart = 25)
 kmeans_fit150 <- kmeans(glove_embedding, 150, iter.max = 30, nstart = 25)
 ```
 
+# Look at the fit. 
 ```{r}
-# fit the k-means clustering with 100 clusters
-k_means_fit <- kmeans(glove_embedding, 100, iter.max = 30, nstart = 25)
-
-# obtain the centroids
-k_means_fit$centers
-
-# look at the size of the clusters
-k_means_fit$size
-min(k_means_fit$size)
-max(k_means_fit$size)
-# -> do not see a cluster with extremely low number of observations. Minimum is 38 and max is 323
-
-# find the cluster to which each word belongs
-k_means_fit$cluster
-
-# The cost function in kmeans is the total sum of the squares
-k_means_fit$totss
-
 # results 
-k_means_fit
-# 26.9% of the total variance in the data set that is explained by the clustering
+kmeans_fit75
+# 25.2%
+kmeans_fit75_w2v
+# 20.2%
+kmeans_fit75_bigr
+# 20.3% of the total variance in the data set that is explained by the clustering
+
+# Create data frame in which the cluster assignment is merged back to rows/word. 
+words_with_cluster75 <- as.data.frame(cbind(row.names(glove_embedding), kmeans_fit75$cluster))
+# add column names
+names(words_with_cluster75) <- c("word", "kmeans75")
+
+# Create data frame in which the cluster assignment is merged back to rows/word. 
+words_with_cluster75_w2v <- as.data.frame(cbind(row.names(w2v_embedding), kmeans_fit75_w2v$cluster))
+# add column names
+names(words_with_cluster75_w2v) <- c("word", "kmeans75")
+
+
+# Create data frame in which the cluster assignment is merged back to rows/word. 
+words_with_cluster75_w2v_bigr <- as.data.frame(cbind(row.names(w2v_bigrams_embedding), kmeans_fit75_bigr$cluster))
+# add column names
+names(words_with_cluster75_w2v_bigr) <- c("word", "kmeans75")
+
+# Mental
+# find out in which cluster the word mother is assigned
+words_with_cluster75[words_with_cluster75$word == "mental", ]
+words_with_cluster75_w2v[words_with_cluster75_w2v$word == "mental", ]
+words_with_cluster75_w2v_bigr[words_with_cluster75_w2v_bigr$word == "mental", ]
+
+cluster_mental_glv <- subset(words_with_cluster75, subset=kmeans75 == 9)
+
+cluster_mental_w2v <- subset(words_with_cluster75_w2v, subset=kmeans75 == 8)
+
+cluster_mental_w2v_bigr <- subset(words_with_cluster75_w2v_bigr, subset=kmeans75 == 34)
+
+# find out in which cluster the word mother is assigned
+words_with_cluster75[words_with_cluster75$word == "mother", ]
+words_with_cluster75_w2v[words_with_cluster75_w2v$word == "mother", ]
+words_with_cluster75_w2v_bigr[words_with_cluster75_w2v_bigr$word == "mother", ]
+
+cluster_mother_glv <- subset(words_with_cluster75, subset=kmeans75 == 74)
+
+cluster_mother_w2v <- subset(words_with_cluster75_w2v, subset=kmeans75 == 19)
+
+cluster_mother_w2v_bigr <- subset(words_with_cluster75_w2v_bigr, subset=kmeans75 == 43)
 ```
 
 # Assign cluster number to data frame and create (sub) data frame for each cluster. See if I can make some functions for this as I repeat this piece of code quite often. 
