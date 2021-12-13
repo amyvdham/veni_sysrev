@@ -23,18 +23,15 @@ Things that are applied:
 ```{r}
 # load libraries
 library(stringr)
-library(udpipe)
 library(Matrix)
 library(yaml)
 library(Rmpfr)
 library(topicmodels)
 library(udpipe)
-library(slam)
 library(tidytext)
 library(textrank)
 library(data.table, quietly = TRUE, warn.conflicts = FALSE)
 source("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/word_functions.R")
-source("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/circle2.R")
 
 recs <- data.table(read.csv("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/recs_final.csv"))
 recs[, "doc" := 1:nrow(recs)]
@@ -191,13 +188,14 @@ bigrams_data <- melt(lemma_clean, id.var = 1:14, variable.name = 'lemma_or_keywo
 
 # remove NA's
 bigrams_data <- bigrams_data[!is.na(bigrams_data$value), ]
+bigrams_data <- as.data.table(bigrams_data)
+is.data.table(bigrams_data)
 
 # SAVE filter with bigrams
 # create data frame with column doc_id term and add a term frequency per doc column column
 nounbydoc_bigrams <- bigrams_data[, 
                                   list(freq = .N), 
-                                  by = list(doc_id = doc_id, 
-                                            term = value)]
+                                  by = list(doc_id = doc_id, term = value)]
 
 # check number of unique words and documents. 
 length(unique(nounbydoc_bigrams$doc_id)) 
@@ -211,3 +209,43 @@ filter_bigrams <- as.data.table(filter_bigrams)
 saveRDS(filter_bigrams, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/bigrams_filter.RData")
 ```
 
+
+# GloVe FILTER (INCLUDING BIGRAMS)
+Create filter in which bigrams are also include to see if these can be found in the glove embedding. Bigrams in the glove embedding are separated with - instead of _ . Therefore a separate filter has to be made with bigrams that can be applied on the glove embedding. 
+
+```{r}
+kw_tr_glove <- textrank_keywords(x =  lemma_clean$filter_lemma[lemma_clean$upos %in% c("NOUN", "ADJ")], ngram_max = 2, sep = "-")
+
+# merge bi grams to dataset 
+lemma_clean$keyword <- txt_recode_ngram(lemma_clean$filter_lemma, compound = kw_tr_glove$keywords$keyword, ngram = kw_tr_glove$keywords$ngram, sep = "-")
+
+# investigating text rank results
+stats <- subset(kw_tr_glove$keywords, ngram > 1 & freq >= 5)
+head(stats, 30)
+
+# stack the columns lemma_filter and keyword on top of each other
+bigrams_data <- melt(lemma_clean, id.var = 1:14, variable.name = 'lemma_or_keyword')
+
+# remove NA's
+bigrams_data <- bigrams_data[!is.na(bigrams_data$value), ]
+bigrams_data <- as.data.table(bigrams_data)
+is.data.table(bigrams_data)
+
+# SAVE filter with bigrams seperated with - instead of _ to apply on glove embedding
+# create data frame with column doc_id term and add a term frequency per doc column column
+nounbydoc_bigrams_glove <- bigrams_data[, 
+                                  list(freq = .N), 
+                                  by = list(doc_id = doc_id, 
+                                            term = value)]
+
+# check number of unique words and documents. 
+length(unique(nounbydoc_bigrams_glove$doc_id)) 
+length(unique(nounbydoc_bigrams_glove$term)) 
+
+# check 
+# create a data frame with one column including the unique terms
+filter_bigrams_glove <- unique(nounbydoc_bigrams_glove$term)
+filter_bigrams_glove <- as.data.table(filter_bigrams_glove)
+
+saveRDS(filter_bigrams_glove, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/bigrams_filter_glove.RData")
+```
