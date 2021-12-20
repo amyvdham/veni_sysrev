@@ -34,3 +34,5 @@ glove.840B.300d.txt
 GoogleNews-vectors-negative300.bin
 pretrained_w2v_filtered.csv
 pretrained_w2v_filtered_bigrams.csv
+bigrams_filter.csv
+final_filter.csv
