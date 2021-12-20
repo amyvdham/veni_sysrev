@@ -10,7 +10,8 @@ editor_options:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-
+## RUN ONCE ##
+save filters as .csv
 ```{r}
 # load final filter 
 final_filter <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/final_filter.RData")
@@ -25,7 +26,8 @@ bigrams_filter <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit
 write.csv(bigrams_filter,"/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/bigrams_filter.csv", row.names = FALSE)
 ```
 
-
+## RUN ONCE ##
+clean and save w2v embeddings. 
 ```{r}
 # load pretrained word2vec 
 wrd2vec_embedding <- read.csv("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/pretrained_w2v_filtered.csv", header = FALSE)
@@ -61,27 +63,18 @@ df_w2vemb <- cSplit(df_w2vemb, "V2", " ")
 
 # retain dimensions of data frame
 dim(df_w2vemb)
-# -> we have 10043 words that are defined by 300 dimensions.
+# -> we have 10077 words that are defined by 300 dimensions.
 
 # check values after splitting
 df_w2vemb[1,]
 # -> looks the same as before 
 
-# check how many unique words there are
-length(unique(df_w2vemb$word))
-# -> as expected there are as many unique words as there are observations. 
-
 # rename the column names of the data frame.
 # First column is named word and the other columns dim1-40
 colnames(df_w2vemb) <- c("word", paste0("dim", 1:300))
 
-# check if there are any missings
-summary(df_w2vemb)
-# -> no missing values. 
-
 # save the embedding 
 # convert the first column, word, to row index.
-library(tidyverse)
 w2v_embedding <- df_w2vemb %>%
      remove_rownames() %>%
      column_to_rownames(var = 'word')
@@ -90,10 +83,11 @@ w2v_embedding <- df_w2vemb %>%
 w2v_embedding <- as.matrix(w2v_embedding)
 str(w2v_embedding)
 
-# save the glove embedding to which the filter is applied so this can be easily loaded into other scripts
+# save the cleaned w2v embedding 
 saveRDS(w2v_embedding, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/w2v_embedding.RData")
 ```
 
+The word2vec embedding including bigrams
 ```{r}
 # load pretrained word2vec with bigrams included
 w2v_embedding_bigram <- read.csv("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/pretrained_w2v_filtered_bigrams.csv", header = FALSE)
@@ -105,7 +99,6 @@ colnames(w2v_embedding_bigram)[1] <- "word"
 str(w2v_embedding_bigram)
 
 # remove certain characters from the column V2 which now is column of the type character and contains a string as value. 
-library(tidyverse)
 # create new data frame that can be used for applying adjustments
 df_bigrams <- w2v_embedding_bigram
 
@@ -123,13 +116,12 @@ df_bigrams[1,c("word", "V2")]
 # -> yes there are now only numbers (the vectors)
 
 # split column V2 into multiple columns
-library(splitstackshape)
 # separate on the space
 df_bigrams <- cSplit(df_bigrams, "V2", " ")
 
 # retain dimensions of data frame
 dim(df_bigrams)
-# -> we have 10068 words that are defined by 300 dimensions.
+# -> we have 10297 words that are defined by 300 dimensions.
 
 # check values after splitting
 df_bigrams[1,]
@@ -139,13 +131,8 @@ df_bigrams[1,]
 # First column is named word and the other columns dim1-40
 colnames(df_bigrams) <- c("word", paste0("dim", 1:300))
 
-# check if there are any missings
-summary(df_bigrams)
-# -> no missing values. 
-
 # save the embedding 
 # convert the first column, word, to row index.
-library(tidyverse)
 w2v_bigrams_embedding <- df_bigrams %>%
      remove_rownames() %>%
      column_to_rownames(var = 'word')
@@ -154,81 +141,196 @@ w2v_bigrams_embedding <- df_bigrams %>%
 w2v_bigrams_embedding <- as.matrix(w2v_bigrams_embedding)
 str(w2v_bigrams_embedding)
 
-# save the glove embedding to which the filter is applied so this can be easily loaded into other scripts
+# save the w2v embedding that includes bigrams 
 saveRDS(w2v_bigrams_embedding, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/w2v_bigrams_embedding.RData")
+```
 
-# CREATE GLOVE EMBEDDING WITH BIGRAMS
-# load existing word embeddings
+## RUN ONCE ##
+apply final filter on glove embedding and save. 
+```{r}
 # load glove vectors into R
 vectors_glove <- data.table::fread('glove.840B.300d.txt', data.table = F,  encoding = 'UTF-8', quote="") 
 
 # rename the columns
 colnames(vectors_glove) <- c('word',paste('dim',1:300,sep = '_'))
 
+# create df in which only the words that we want to be included are kept
+filtered_embedding <- subset(vectors_glove, word %in% final_filter$filter_lemma)
+
+# Make final GloVE embedding ready for analysis
+# convert the first column, word, to row index.
+glove_embedding <- filtered_embedding %>%
+     remove_rownames() %>%
+     column_to_rownames(var = 'word')
+
+# convert dataframe to a matrix
+glove_embedding <- as.matrix(glove_embedding)
+str(glove_embedding)
+
+# save the glove embedding to which the filter is applied so this can be easily loaded into other scripts
+saveRDS(glove_embedding, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/glove_embedding_final.RData")
+```
+
+Apply bigrams filter on glove embedding and save the embedding. 
+```{r}
+# CREATE GLOVE EMBEDDING WITH BIGRAMS
 # load data frame with column with selection of words to include in analysis. 
 df_bigrams_glove <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/bigrams_filter_glove.RData")
 
 # create df in which only the words that we want to be included are kept
 glove_embedding_bigrams <- subset(vectors_glove, word %in% df_bigrams_glove$filter_bigrams_glove)
 
-# check number of unique words
-length(unique((glove_embedding_bigrams$word)))
-# 11619
-
-# non-GloVe: check which words are in the filter but are not in the feature matrix and are therefore lost (unwanted).
-lost_words <- subset(df_bigrams_glove, !(filter_bigrams_glove %in% glove_embedding_bigrams$word))
-# 2182 words lost vs. 2117 words lost when token filter applied. 
-
-length(unique((glove_embedding_bigrams$word))) + length(unique((lost_words$filter_bigrams_glove)))
-# -> 27097. Which is equal to the line of code below. 
-length(unique((df_bigrams_glove$filter_bigrams_glove)))
-
-
 # transform so that it can be saved
-glove_embedding_bigrams <- glove_embedding_bigrams %>%
+glove_emb_bigrams <- glove_embedding_bigrams %>%
      remove_rownames() %>%
      column_to_rownames(var = 'word')
 
 # convert dataframe to a matrix
-glove_embedding_bigrams <- as.matrix(glove_embedding_bigrams)
-str(glove_embedding_bigrams)
+glove_emb_bigrams <- as.matrix(glove_emb_bigrams)
+str(glove_emb_bigrams)
 
-saveRDS(glove_embedding_bigrams, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/glove_embedding_bigrams.RData")
+saveRDS(glove_emb_bigrams, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/glove_embedding_bigrams.RData")
 ```
 
-# compare w2v with glove embedding
-```{r}
-w2v_embedding <- df_w2vemb
 
+## START HERE ##
+First load all the embeddings 
+```{r}
+# Load all the embeddings
+# glove embedding 
 glove_embedding <-  readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/glove_embedding_final.RData")
 
-glv_embedding <- as.data.frame(glove_embedding)
+# glove embedding including bigrams
+glove_bigrams_embedding <-  readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/glove_embedding_bigrams.RData")
 
+# w2v embedding 
+w2v_embedding <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/w2v_embedding.RData")
+
+# w2v embedding including bigrams
+w2v_bigrams_embedding <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/w2v_bigrams_embedding.RData")
+
+```
+
+# Check for each embedding which words are lost 
+Note that filters, final_filter, bigrams_filter and df_bigrams_glove need to be loaded in the pieces of code above before we can run the code below. 
+```{r}
+# GLOVE EMBEDDING 
+# check number of unique words
+length(unique((rownames(glove_embedding))))
+# 11,562 unique words
+
+# non-GloVe: check which words are in the final filter but are not in the glove embedding data and are therefore lost (unwanted).
+lost_glove <- subset(final_filter, !(filter_lemma %in% rownames(glove_embedding)))
+# 2,182 words lost  
+
+length(unique(rownames(glove_embedding))) + length(unique((lost_glove$filter_lemma)))
+# -> 13,747. Which is equal to the line of code below. 
+length(unique((final_filter$filter_lemma)))
+
+# GLOVE EMBEDDING INCLUDING BIGRAMS
+# check number of unique words
+length(unique((rownames(glove_bigrams_embedding))))
+# 11,943 unique words
+
+# non-GloVe: check which words are in the bigrams glove filter but are not in the glove embedding data and are therefore lost (unwanted).
+lost_glove_bigrams <- subset(df_bigrams_glove, !(filter_bigrams_glove %in% rownames(glove_bigrams_embedding)))
+# 17,175 words lost  
+
+length(unique(rownames(glove_bigrams_embedding))) + length(unique((lost_glove_bigrams$filter_bigrams_glove)))
+# -> 29,118. Which is equal to the line of code below. 
+length(unique((bigrams_filter$filter_bigrams)))
+
+# WORD2VEC EMBEDDING
+# check number of unique words
+length(unique((rownames(w2v_embedding))))
+# 10,077 unique words
+
+# non-w2v: check which words are in the final filter but are not in the w2v embedding data and are therefore lost (unwanted).
+lost_w2v <- subset(final_filter, !(filter_lemma %in% rownames(w2v_embedding)))
+# 3,670 words lost  
+
+length(unique(rownames(w2v_embedding))) + length(unique((lost_w2v$filter_lemma)))
+# -> 13,747. Which is equal to the line of code below. 
+length(unique((final_filter$filter_lemma)))
+
+# WORD2VEC EMBEDDING INCLUDING BIGRAMS
+# check number of unique words
+length(unique((rownames(w2v_bigrams_embedding))))
+# 10,297 unique words
+
+# non-w2v: check which words are in the bigrams filter but are not in the w2v embedding data and are therefore lost (unwanted).
+lost_w2v_bigrams <- subset(bigrams_filter, !(filter_bigrams %in% rownames(w2v_bigrams_embedding)))
+# 18,821 words lost  
+
+length(unique(rownames(w2v_bigrams_embedding))) + length(unique((lost_w2v_bigrams$filter_bigrams)))
+# -> 29,118. Which is equal to the line of code below. 
+length(unique((bigrams_filter$filter_bigrams)))
+```
+
+# Comparison of the different embeddings 
+```{r}
+# COMPARE GLOVE AND GLOVE BIGRAMS
+diff_glove <- subset(glove_bigrams_embedding, !(rownames(glove_bigrams_embedding) %in% rownames(glove_embedding)))
+# -> if we look at the rownames this matrix we see that difference between the two matrices are indeed all bigrams. This isto be expected. 
+
+# check the length of difference 
+length(unique(rownames(words_diff_glove)))
+length(unique(rownames(glove_bigrams_embedding))) - length(unique(rownames(glove_embedding))) 
+
+# COMPARE W2V AND W2V BIGRAMS
+diff_w2v <- subset(w2v_bigrams_embedding, !(rownames(w2v_bigrams_embedding) %in% rownames(w2v_embedding)))
+# -> if we look at the rownames this matrix we see that difference between the two matrices are indeed all bigrams. This isto be expected. 
 # check words that are in the glove embedding that are also in the w2v embedding
-words_same <- subset(glv_embedding, rownames(glv_embedding) %in% wrd2vec_embedding$word)
 
-# check words that are in the glove embedding but not in the w2vec embedding 
-words_diff <- subset(glv_embedding, !(rownames(glv_embedding) %in% wrd2vec_embedding$word))
+# check the length of difference 
+length(unique(rownames(diff_w2v)))
+length(unique(rownames(w2v_bigrams_embedding))) - length(unique(rownames(w2v_embedding))) 
 
-# check words that are in the w2v embedding but not in the glove embedding
-words_in_w2v_notglve <- subset(w2v_embedding, !( word %in% rownames(glv_embedding)))
+# COMPARE GLOVE AND W2V
+# check words that are in the glove embedding that are also in the w2v embedding
+words_same <- subset(glove_embedding, rownames(glove_embedding) %in% rownames(w2v_embedding))
 
+length(unique(rownames(words_same)))
 
-# check bigrams embedding
-bigrams_embedding <- df_bigrams
+# check words that are in the glove embedding but not in the w2v embedding 
+words_diff <- subset(glove_embedding, !(rownames(glove_embedding) %in% rownames(w2v_embedding)))
 
-# compare the w2v embeddings in which bigrams are and are not included
-# check words that are in the w2v bigrams embedding but not in the w2c embedding 
-words_diff_w2v <- subset(bigrams_embedding, !(word %in% wrd2vec_embedding$word))
-# -> as expected the difference are 209 bigrams
+length(unique(rownames(words_diff)))
 
-# COMPARE THE GLOBE EMBEDDINGS IN WHICH BIGRAMS ARE AND ARE NOT INCLUDED
-words_diff_glove <- subset(glove_embedding_bigrams, !(word %in% rownames(glv_embedding)))
+length(unique(rownames(words_same))) + length(unique(rownames(words_diff))) == length(unique(rownames(glove_embedding)))
 
-# COMPARE THE W2V and GLOVE EMBEDDINGS INCLUDING BIGRAMS
-w2v_bigrams <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/w2v_bigrams_embedding.RData")
+length(unique(rownames(w2v_embedding))) + length(unique(rownames(words_diff))) == length(unique(rownames(glove_embedding)))
 
-# hard to compare because bigrams are separated on _ in w2v and on _ in glove
-words_glovebg_vs_w2vbg <- subset(glove_embedding_bigrams, !(word %in% rownames(w2v_bigrams)))
+# check words that are in the w2v embedding but not in the glove embedding 
+words_diff_w2v <- subset(w2v_embedding, !(rownames(w2v_embedding) %in% rownames(glove_embedding)))
+
+length(unique(rownames(w2v_embedding))) + length(unique(rownames(words_diff))) -  length(unique(rownames(words_diff_w2v))) == length(unique(rownames(glove_embedding)))
+
+# COMPARE GLOVE BIGRAMS AND W2V BIGRAMS
+# note that I will use diff_glove and diff_w2v here because the diff represent the bigrams that are included extracted from both different datasets, glove and w2v. 
+# because the bigrams are split differently in the two dataset we first have to apply some data manipulations 
+diff_glove_bigram_comp <- as.data.frame(diff_glove)
+diff_glove_bigram_comp$word <- rownames(diff_glove_bigram_comp)
+diff_glove_bigram_comp <- diff_glove_bigram_comp["word"]
+
+# create column in which the bigrams part of the glove embedding are split with _ and not -. 
+diff_glove_bigram_comp$w2v_style <- gsub('-', '_', diff_glove_bigram_comp$word)
+
+# now check which bigrams are in the w2v embedding but not in the glove embedding
+bigrams_in_w2v <- subset(diff_w2v, !(rownames(diff_w2v) %in% diff_glove_bigram_comp$w2v_style))
+
+# Check which bigrams are in the glove embedding but not in the w2v embedding
+bigrams_in_glove <- subset(diff_glove_bigram_comp, !(w2v_style %in% rownames(diff_w2v)))
+
+# check which, and how many, bigrams are in both embeddings 
+bigrams_both <- subset(diff_w2v, rownames(diff_w2v) %in% diff_glove_bigram_comp$w2v_style)
+length(unique(rownames(bigrams_both)))
+# -> interestingly the are only 45 bigrams that are in both embeddings. 
+
+# check if things add up for w2v
+length(unique(rownames(diff_w2v))) == length(unique(rownames(bigrams_both))) + length(unique(rownames(bigrams_in_w2v)))
+
+# check if things add up for glove
+length(unique(rownames(diff_glove))) == length(unique(rownames(bigrams_both))) + length(unique(rownames(bigrams_in_glove)))
 ```
 
