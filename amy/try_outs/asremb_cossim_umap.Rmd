@@ -175,3 +175,30 @@ mothers_plot <- ggplot(selected_words, aes(x = UMAP1, y = UMAP2, colour = word =
 
 mothers_plot
 ```
+
+## Run some of the steps on asr embedding but now with the latest filter applied 
+```{r}
+## CREATE EMBEDDING WITH FINAL FILTER
+# add word column
+df_checkbigrams <- df
+df_checkbigrams$word <- rownames(df)
+
+# final filter 
+final_filter <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/final_filter.RData")
+
+# extract word vectors of terms in final filter
+asr_final_embedding <- subset(df, rownames(df) %in% final_filter$filter_lemma)
+
+# transform dataframe to matrix
+asr_final_embedding <- t(asr_final_embedding)
+
+str(asr_final_embedding)
+
+# find similar words 
+word <- asr_final_embedding["mother", , drop = FALSE] 
+cos_sim = sim2(x = asr_final_embedding, y = word, method = "cosine", norm = "l2")
+head(sort(cos_sim[,1], decreasing = TRUE), 50)
+
+
+```
+
