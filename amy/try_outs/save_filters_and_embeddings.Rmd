@@ -274,7 +274,7 @@ diff_glove <- subset(glove_bigrams_embedding, !(rownames(glove_bigrams_embedding
 # -> if we look at the rownames this matrix we see that difference between the two matrices are indeed all bigrams. This isto be expected. 
 
 # check the length of difference 
-length(unique(rownames(words_diff_glove)))
+length(unique(rownames(diff_glove)))
 length(unique(rownames(glove_bigrams_embedding))) - length(unique(rownames(glove_embedding))) 
 
 # COMPARE W2V AND W2V BIGRAMS
