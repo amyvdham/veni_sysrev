@@ -26,70 +26,28 @@ library(data.table, quietly = TRUE, warn.conflicts = FALSE)
 set.seed(88)
 ```
 
-## RUN ONCE ##
-# Load needed datafiles
-```{r}
-# load existing word embeddings
-# load glove vectors into R
-vectors_glove <- data.table::fread('glove.840B.300d.txt', data.table = F,  encoding = 'UTF-8', quote="") 
-
-# rename the columns
-colnames(vectors_glove) <- c('word',paste('dim',1:300,sep = '_'))
-
-# load data frame with column with selection of words to include in analysis. 
-df_filter <- readRDS("final_filter.RData")
-
-# create df in which only the words that we want to be included are kept
-filtered_embedding <- subset(vectors_glove, word %in% df_filter$filter_lemma)
-
-# check number of unique words
-length(unique((filtered_embedding$word)))
-# 11342 unique words
-
-# non-GloVe: check which words are in the final filter but are not in the glove embedding data and are therefore lost (unwanted).
-lost_words <- subset(df_filter, !(filter_lemma %in% filtered_embedding$word))
-# 2182 words lost  
-
-length(unique((filtered_embedding$word))) + length(unique((lost_words$filter_lemma)))
-# -> 13524. Which is equal to the line of code below. 
-length(unique((df_filter$filter_lemma)))
-```
-
-# Make final GloVE embedding ready for analysis
-```{r}
-# convert the first column, word, to row index.
-library(tidyverse)
-glove_embedding <- filtered_embedding %>%
-     remove_rownames() %>%
-     column_to_rownames(var = 'word')
-
-# convert dataframe to a matrix
-glove_embedding <- as.matrix(glove_embedding)
-str(glove_embedding)
-
-# save the glove embedding to which the filter is applied so this can be easily loaded into other scripts
-saveRDS(glove_embedding, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/glove_embedding_final.RData")
-```
-
-## START HERE ##
+## Load the embeddings 
 ```{r}
 # load glove word embedding file
 glove_embedding <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/glove_embedding_final.RData")
 
 str(glove_embedding)
 
-# load glove word embedding file
+# load glove bigrams word embedding file
+glove_bigrams_embedding <-  readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/glove_embedding_bigrams.RData")
+
+str(glove_bigrams_embedding)
+
+# load w2v word embedding file
 w2v_embedding <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/w2v_embedding.RData")
 
 str(w2v_embedding)
 
-# load glove word embedding file
+# load w2v bigrams word embedding file
 w2v_bigrams_embedding <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/w2v_bigrams_embedding.RData")
 
 str(w2v_bigrams_embedding)
 ```
-
-
 
 # Look at wich words are close to health
 ```{r}
@@ -102,11 +60,15 @@ find_similar_words <- function(word, embedding_matrix, n = 5) {
   similarities[, 1] %>% sort(decreasing = TRUE) %>% head(n)
 }
 
-# Run function on the word health and see the 25 closest words based on cosine similarity. 
+# Run function on the word health and see the 25 closest words based on cosine similarity. Compare the different embeddings.
 find_similar_words("white",glove_embedding,50)
 find_similar_words("white",w2v_embedding,50)
 find_similar_words("white",w2v_bigrams_embedding,50)
 find_similar_words("mental_health",w2v_bigrams_embedding,50)
+
+# check if socio-emotional and socioemotional are similar words in the glove bigrams embedding
+find_similar_words("socio-emotional",glove_bigrams_embedding,25)
+find_similar_words("socioemotional",glove_bigrams_embedding,25)
 ```
 
 # Clustering analysis
