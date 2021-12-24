@@ -10,7 +10,7 @@ editor_options:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-Try out k-means clustering on the existing GloVe embedding on which the token filter is applied
+Try out k-means clustering on the existing GloVe embedding on which the final filter is applied.
 
 ```{r}
 # load libraries
@@ -77,12 +77,6 @@ Run kmeans with a value for k of 75, 100, 125, 150 and compare the results. Run 
 # fit the k-means clustering with 75 clusters, glove
 kmeans_fit75 <- kmeans(glove_embedding, 75, iter.max = 30, nstart = 25)
 
-# fit the k-means clustering with 75 clusters, w2v
-kmeans_fit75_w2v <- kmeans(w2v_embedding, 75, iter.max = 30, nstart = 25)
-
-# fit the k-means clustering with 75 clusters, w2v bigrams
-kmeans_fit75_bigr <- kmeans(w2v_bigrams_embedding, 75, iter.max = 30, nstart = 25)
-
 # fit the k-means clustering with 100 clusters
 kmeans_fit100 <- kmeans(glove_embedding, 100, iter.max = 30, nstart = 25)
 
@@ -95,6 +89,12 @@ kmeans_fit150 <- kmeans(glove_embedding, 150, iter.max = 30, nstart = 25)
 
 # Look at the fit. 
 ```{r}
+
+# fit the k-means clustering with 75 clusters, w2v
+kmeans_fit75_w2v <- kmeans(w2v_embedding, 75, iter.max = 30, nstart = 25)
+
+# fit the k-means clustering with 75 clusters, w2v bigrams
+kmeans_fit75_bigr <- kmeans(w2v_bigrams_embedding, 75, iter.max = 30, nstart = 25)
 # results 
 kmeans_fit75
 # 25.2%
@@ -590,16 +590,12 @@ set.seed(88)
 https://statsandr.com/blog/clustering-analysis-k-means-and-hierarchical-clustering-by-hand-and-in-r/#silhouette-method
 ```{r}
 # Elbow method
-fviz_nbclust(glove_embedding, kmeans, iter.max = 30, nstart = 25, method = "wss", k.max = 150) +
-  geom_vline(xintercept = 140, linetype = 2) +
-  geom_vline(xintercept = 138, linetype = 2) +
-  geom_vline(xintercept = 139, linetype = 2) +
-  labs(subtitle = "Elbow method") # add subtitle
+fviz_nbclust(glove_embedding, kmeans, iter.max = 30, method = "wss", k.max = 150) + labs(subtitle = "Elbow method") # add subtitle
 
 # geom_vline(xintercept = 4, linetype = 2) + # add line for better visualisation. I do not see a clear knee location in the plot. 
 
 # Silhouette method
-fviz_nbclust(glove_embedding, kmeans(iter.max = 30, nstart = 25), method = "silhouette", k.max = 150) +
+fviz_nbclust(glove_embedding, kmeans, iter.max = 50, nstart = 25, method = "silhouette", k.max = 150) +
   labs(subtitle = "Silhouette method")
 
 # Takes to long so did not run this. Could turn nboot down. 
@@ -686,3 +682,17 @@ words_with_cluster119[words_with_cluster119$word == "depressed", ]
 words_with_cluster119[words_with_cluster119$word == "nondepressed", ]
 words_with_cluster119[words_with_cluster119$word == "antidepressant", ]
 ```
+
+
+# Try some other indices to determine K
+```{r}
+library(clusterCrit)
+int_idx_75 <- intCriteria(glove_embedding, kmeans_fit75$cluster, c("Calinski_Harabasz", "Davies_Bouldin"))
+
+int_idx_100 <- intCriteria(glove_embedding, kmeans_fit100$cluster, c("Calinski_Harabasz", "Davies_Bouldin"))
+
+int_idx_125 <- intCriteria(glove_embedding, kmeans_fit125$cluster, c("Calinski_Harabasz", "Davies_Bouldin"))
+
+int_idx_150 <- intCriteria(glove_embedding, kmeans_fit150$cluster, c("Calinski_Harabasz", "Davies_Bouldin"))
+```
+
