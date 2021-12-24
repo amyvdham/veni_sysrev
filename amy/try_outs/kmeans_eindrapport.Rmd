@@ -1,0 +1,328 @@
+---
+title: "K-means Clustering results draft eindrapport"
+author: "Amy van der Ham"
+date: "12/23/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Try out k-means clustering on the existing GloVe embedding on which the final filter is applied.
+
+```{r}
+# load libraries
+library(dplyr)
+library(cluster)
+library(ggplot2)
+library(devtools)
+library(data.table, quietly = TRUE, warn.conflicts = FALSE)
+library(factoextra)
+```
+
+# set.seed prior to running the k-means clustering 
+```{r}
+set.seed(88)
+```
+
+## Load the embeddings 
+```{r}
+# load glove word embedding file
+glove_embedding <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/glove_embedding_final.RData")
+
+str(glove_embedding)
+
+# load glove bigrams word embedding file
+glove_bigrams_embedding <-  readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/glove_embedding_bigrams.RData")
+
+str(glove_bigrams_embedding)
+
+# load w2v word embedding file
+w2v_embedding <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/w2v_embedding.RData")
+
+str(w2v_embedding)
+
+# load w2v bigrams word embedding file
+w2v_bigrams_embedding <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/w2v_bigrams_embedding.RData")
+
+str(w2v_bigrams_embedding)
+```
+
+# COSINE SIMILARITY
+# Look at wich words are close to health
+```{r}
+library(text2vec)
+# create function to find similar words based on cosine distance
+find_similar_words <- function(word, embedding_matrix, n = 5) {
+  similarities <- embedding_matrix[word, , drop = FALSE] %>%
+    sim2(embedding_matrix, y = ., method = "cosine")
+  
+  similarities[, 1] %>% sort(decreasing = TRUE) %>% head(n)
+}
+
+# Run function on the word health and see the 25 closest words based on cosine similarity. Compare the different embeddings.
+find_similar_words("white",glove_embedding,50)
+find_similar_words("white",w2v_embedding,50)
+find_similar_words("white",w2v_bigrams_embedding,50)
+find_similar_words("mental_health",w2v_bigrams_embedding,50)
+
+# check if socio-emotional and socioemotional are similar words in the glove bigrams embedding
+find_similar_words("socio-emotional",glove_bigrams_embedding,25)
+find_similar_words("socioemotional",glove_bigrams_embedding,25)
+```
+
+# DETERMINING THE OPTIMAL NUMBER OF CLUSTER, K. 
+Determining the value of the parameter K for the glove_embedding matrix. 
+Function below is retrieved from the following page: https://www.r-bloggers.com/2013/08/k-means-clustering-from-r-in-action/ 
+```{r}
+wssplot <- function(data, nc=15, seed=88){
+  wss <- (nrow(data)-1)*sum(apply(data,2,var))
+  for (i in 2:nc){
+    set.seed(seed)
+    wss[i] <- sum(kmeans(data, centers=i, iter.max = 30)$withinss)}
+  plot(1:nc, wss, type="b", xlab="Number of Clusters",
+       ylab="Within groups sum of squares")}
+
+wssplot(glove_embedding, nc=150)
+```
+
+# set seed again
+```{r}
+set.seed(88)
+```
+
+# Using the package factoextra
+Examples on how to use this packages are retrieved from the following page: 
+https://statsandr.com/blog/clustering-analysis-k-means-and-hierarchical-clustering-by-hand-and-in-r/#silhouette-method
+```{r}
+# Elbow method
+elbow_plot_glove <- fviz_nbclust(glove_embedding, kmeans,  method = "wss", iter.max = 30, k.max = 150) +
+  labs(subtitle = "Elbow method") # add subtitle
+
+elbow_plot_glove +
+      scale_x_discrete(breaks = levels(elbow_plot_glove$clusters)[c(T, rep(F, 9))]) # following line should make sure that on the axis the value is shown every 10 clusters but does not seem to be working. 
+
+
+elbow_plot_glove +
+      scale_x_discrete(breaks = levels(elbow_plot_glove$clusters)[c(T, rep(F, 9))]) # following line should make sure that on the axis the value is shown every 10 clusters but does not seem to be working. 
+
+# geom_vline(xintercept = 4, linetype = 2) + # add line for better visualisation. I do not see a clear knee location in the plot. So no use in adding this.  
+
+# Silhouette method
+fviz_nbclust(glove_embedding, kmeans, iter.max = 30, nstart = 25, method = "silhouette", k.max = 150) +
+  labs(subtitle = "Silhouette method")
+
+# Takes to long so did not run this. Could turn nboot down. 
+# Gap statistic
+fviz_nbclust(glove_embedding, kmeans,
+  iter.max = 30,
+  nstart = 25,
+  method = "gap_stat",
+  nboot = 500 # reduce it for lower computation time (but less precise results)
+) +
+  labs(subtitle = "Gap statistic method")
+
+
+# try to determine number of cluster with NbClust package
+library(NbClust)
+nbclust_out <- NbClust(
+  data = glove_embedding,
+  distance = "euclidean",
+  min.nc = 2, # minimum number of clusters
+  max.nc = 150, # maximum number of clusters
+  method = "kmeans", # one of: "ward.D", "ward.D2", "single", "complete", "average", "mcquitty", "median", "centroid", "kmeans"
+  index = "silhouette"
+)
+# -> takes a really long time and gives converge warning. 
+nbclust_out
+
+# Gap statistic
+fviz_nbclust(glove_embedding, kmeans,
+  iter.max = 30,
+  nstart = 25,
+  method = "gap_stat",
+  nboot = 5 # reduce it for lower computation time (but less precise results)
+) +
+  labs(subtitle = "Gap statistic method")
+```
+
+# CLUSTERING ANALYSIS
+Run kmeans with a value for k of 75, 100, 125, 150 and compare the results. For now I only did this on the glove embedding.
+```{r}
+# fit the k-means clustering with 75 clusters, glove
+kmeans_fit75 <- kmeans(glove_embedding, 75, iter.max = 30, nstart = 25)
+
+# fit the k-means clustering with 100 clusters
+kmeans_fit100 <- kmeans(glove_embedding, 100, iter.max = 30, nstart = 25)
+
+# fit the k-means clustering with 125 clusters
+kmeans_fit125 <- kmeans(glove_embedding, 125, iter.max = 30, nstart = 25)
+
+# fit the k-means clustering with 150 clusters
+kmeans_fit150 <- kmeans(glove_embedding, 150, iter.max = 30, nstart = 25)
+```
+
+# RESULTS
+Look at the fit of runnig kmeans on the glove embedding with k = 125 and compare these result with running kmeans on the word2vec embedding including bigrams with k = 125 . 
+```{r}
+# results 
+kmeans_fit125
+
+# obtain the centroids
+kmeans_fit125$centers
+
+# look at the size of the clusters
+kmeans_fit125$size
+min(kmeans_fit125$size)
+max(kmeans_fit125$size)
+# -> do not see a cluster with extremely low number of observations. Minimum is 38 and max is 323
+
+# The cost function in kmeans is the total sum of the squares
+kmeans_fit125$totss
+
+# silhouette width
+sil <- silhouette(kmeans_fit125$cluster, dist(glove_embedding))
+fviz_silhouette(sil)
+# -> the average silhouette width is low and there are quite some negative values. 
+
+# CHECK CLUSTERS
+# Create data frame in which the cluster assignment is merged back to rows/word. 
+words_with_cluster125 <- as.data.frame(cbind(row.names(glove_embedding), kmeans_fit125$cluster))
+# add column names
+names(words_with_cluster125) <- c("word", "kmeans125")
+
+# Check cluster with highest silhouette average
+cluster125_hghsil <- subset(words_with_cluster125, subset=kmeans125 == 47)
+
+# Check smallest cluster 
+cluster125_97 <- subset(words_with_cluster125, subset=kmeans125 == 97)
+
+# Mother
+# find out in which cluster the word mother is assigned
+words_with_cluster125[words_with_cluster125$word == "mother", ]
+
+cluster125_80 <- subset(words_with_cluster125, subset=kmeans125 == 80)
+
+# find out in which cluster the word ethnic is assigned
+words_with_cluster125[words_with_cluster125$word == "ethnic", ]
+
+cluster125_75 <- subset(words_with_cluster125, subset=kmeans125 == 75)
+
+# find out to which cluster the word academic is assigned
+words_with_cluster125[words_with_cluster125$word == "academic", ]
+
+cluster125_17 <- subset(words_with_cluster125, subset=kmeans125 == 17)
+
+# find out to which cluster the word environment is assigned
+words_with_cluster125[words_with_cluster125$word == "academic", ]
+
+cluster125_17 <- subset(words_with_cluster125, subset=kmeans125 == 17)
+
+# check a cluster with a low average silhouette width
+cluster125_lowsil <- subset(words_with_cluster125, subset=kmeans125 == 27)
+
+# check a cluster with a low average silhouette width
+cluster125_lowsil2 <- subset(words_with_cluster125, subset=kmeans125 == 124)
+# contains un and non words. 
+
+# W2V BIGRAMS
+# fit the k-means clustering with 125 clusters on w2v bigrams embedding.
+kmeans_fit125_w2v <- kmeans(w2v_bigrams_embedding, 125, iter.max = 30, nstart = 25)
+
+# Create data frame in which the cluster assignment is merged back to rows/word. 
+words_with_cluster125_w2v <- as.data.frame(cbind(row.names(w2v_bigrams_embedding), kmeans_fit125_w2v$cluster))
+# add column names
+names(words_with_cluster125_w2v) <- c("word", "kmeans125")
+
+# find out to which cluster the word emotional_dysregulation is assigned
+words_with_cluster125_w2v[words_with_cluster125_w2v$word == "emotional_dysregulation", ]
+
+cluster125_w2v_112 <- subset(words_with_cluster125_w2v, subset=kmeans125 == 112)
+
+# find out to which cluster the word emotion is assigned
+words_with_cluster125_w2v[words_with_cluster125_w2v$word == "emotion", ]
+
+cluster125_w2v_117 <- subset(words_with_cluster125_w2v, subset=kmeans125 == 117)
+
+# find out to which cluster the word family is assigned
+words_with_cluster125_w2v[words_with_cluster125_w2v$word == "family", ]
+
+cluster125_w2v_61 <- subset(words_with_cluster125_w2v, subset=kmeans125 == 61)
+```
+
+# VISUALIZE THE RESULTS
+```{r}
+# TSNE VISUALIZATION OF CLUSTER 97 (SMALLEST CLUSTER)
+library(Rtsne)
+
+# create plot of separate cluster with tsne
+embedding_cluster97 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_97$word)
+
+tsne_clst97 <- Rtsne(embedding_cluster97, dims = 2, perplexity = 10, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# create df that can be used for making the plot. 
+embedding_cluster97_plot <- as.data.frame(embedding_cluster97)
+
+embedding_cluster97_plot$word <- rownames(embedding_cluster97_plot)
+
+# create plot
+#colors = rainbow(length(unique(embedding_cluster91_plot$word)))
+#names(colors) = unique(embedding_cluster91_plot$word)
+
+plot_df <- data.frame(tsne_clst97 $Y) %>%
+  mutate(
+    word = embedding_cluster97_plot$word,
+  ) 
+p <- ggplot(plot_df, aes(X1, X2)) +
+  geom_text(aes(X1, X2, label = word), size = 3) +
+  xlab("") + ylab("") +
+  ggtitle("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster 97") +
+  theme(legend.position = "none") +
+  theme_minimal()
+p
+
+# TSNE VISUALIZATION OF CLUSTER 80 (family related cluster)
+# create plot of separate cluster with tsne
+embedding_cluster80 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_80$word)
+
+tsne_clst80 <- Rtsne(embedding_cluster80, dims = 2, perplexity = 25, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# create df that can be used for making the plot. 
+embedding_cluster80_plot <- as.data.frame(embedding_cluster80)
+
+embedding_cluster80_plot$word <- rownames(embedding_cluster80_plot)
+
+# create plot
+#colors = rainbow(length(unique(embedding_cluster91_plot$word)))
+#names(colors) = unique(embedding_cluster91_plot$word)
+
+plot_df <- data.frame(tsne_clst80 $Y) %>%
+  mutate(
+    word = embedding_cluster80_plot$word,
+  ) 
+p <- ggplot(plot_df, aes(X1, X2)) +
+  geom_text(aes(X1, X2, label = word), size = 3) +
+  xlab("") + ylab("") +
+  ggtitle("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster 80") +
+  theme(legend.position = "none") +
+  theme_minimal()
+p
+```
+
+
+# INTERNAL VALIDATION
+# Try some internal validation measures to evaluate the results.
+```{r}
+library(clusterCrit)
+
+int_idx_75 <- intCriteria(glove_embedding, kmeans_fit75$cluster, c("Calinski_Harabasz", "Davies_Bouldin"))
+
+int_idx_100 <- intCriteria(glove_embedding, kmeans_fit100$cluster, c("Calinski_Harabasz", "Davies_Bouldin"))
+
+int_idx_125 <- intCriteria(glove_embedding, kmeans_fit125$cluster, c("Calinski_Harabasz", "Davies_Bouldin"))
+
+int_idx_150 <- intCriteria(glove_embedding, kmeans_fit150$cluster, c("Calinski_Harabasz", "Davies_Bouldin"))
+```
+
