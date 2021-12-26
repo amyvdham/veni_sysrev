@@ -104,12 +104,6 @@ elbow_plot_glove <- fviz_nbclust(glove_embedding, kmeans,  method = "wss", iter.
 elbow_plot_glove +
       scale_x_discrete(breaks = levels(elbow_plot_glove$clusters)[c(T, rep(F, 9))]) # following line should make sure that on the axis the value is shown every 10 clusters but does not seem to be working. 
 
-
-elbow_plot_glove +
-      scale_x_discrete(breaks = levels(elbow_plot_glove$clusters)[c(T, rep(F, 9))]) # following line should make sure that on the axis the value is shown every 10 clusters but does not seem to be working. 
-
-# geom_vline(xintercept = 4, linetype = 2) + # add line for better visualisation. I do not see a clear knee location in the plot. So no use in adding this.  
-
 # Silhouette method
 fviz_nbclust(glove_embedding, kmeans, iter.max = 30, nstart = 25, method = "silhouette", k.max = 150) +
   labs(subtitle = "Silhouette method")
@@ -160,6 +154,7 @@ kmeans_fit100 <- kmeans(glove_embedding, 100, iter.max = 30, nstart = 25)
 # fit the k-means clustering with 125 clusters
 kmeans_fit125 <- kmeans(glove_embedding, 125, iter.max = 30, nstart = 25)
 
+
 # fit the k-means clustering with 150 clusters
 kmeans_fit150 <- kmeans(glove_embedding, 150, iter.max = 30, nstart = 25)
 ```
@@ -177,7 +172,7 @@ kmeans_fit125$centers
 kmeans_fit125$size
 min(kmeans_fit125$size)
 max(kmeans_fit125$size)
-# -> do not see a cluster with extremely low number of observations. Minimum is 38 and max is 323
+# -> do not see a cluster with extremely low number of observations. Minimum is 36 and max is 289
 
 # The cost function in kmeans is the total sum of the squares
 kmeans_fit125$totss
@@ -186,6 +181,8 @@ kmeans_fit125$totss
 sil <- silhouette(kmeans_fit125$cluster, dist(glove_embedding))
 fviz_silhouette(sil)
 # -> the average silhouette width is low and there are quite some negative values. 
+# lowsil: cluster 7, -.05, cluster 124, -04, cluster 87, -0.07. 
+# highsil: cluster 123, 0.11, cluster 47, 0,13
 
 # CHECK CLUSTERS
 # Create data frame in which the cluster assignment is merged back to rows/word. 
@@ -215,10 +212,12 @@ words_with_cluster125[words_with_cluster125$word == "academic", ]
 
 cluster125_17 <- subset(words_with_cluster125, subset=kmeans125 == 17)
 
-# find out to which cluster the word environment is assigned
-words_with_cluster125[words_with_cluster125$word == "academic", ]
+# find out to which cluster the word yoga is assigned
+words_with_cluster125[words_with_cluster125$word == "yoga", ]
 
-cluster125_17 <- subset(words_with_cluster125, subset=kmeans125 == 17)
+cluster125_28 <- subset(words_with_cluster125, subset=kmeans125 == 28)
+
+cluster125_21 <- subset(words_with_cluster125, subset=kmeans125 == 21)
 
 # check a cluster with a low average silhouette width
 cluster125_lowsil <- subset(words_with_cluster125, subset=kmeans125 == 27)
@@ -227,7 +226,41 @@ cluster125_lowsil <- subset(words_with_cluster125, subset=kmeans125 == 27)
 cluster125_lowsil2 <- subset(words_with_cluster125, subset=kmeans125 == 124)
 # contains un and non words. 
 
-# W2V BIGRAMS
+
+# CLUSTER ANALYSIS WITHIN CLUSTER 
+# create new subset data frame
+embedding_cluster21 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_21$word)
+
+# fit k-means
+kmeans_fit3_cluster21 <- kmeans(embedding_cluster21, 3, iter.max = 30, nstart = 25)
+
+# look at the results
+# Create data frame in which the merge cluster assignment back to rows/word. 
+words_with_cluster21_3 <- as.data.frame(cbind(row.names(embedding_cluster21), kmeans_fit3_cluster21$cluster))
+# add column names
+names(words_with_cluster21_3) <- c("word", "kmeans3")
+
+# make a df for the 3 cluster results
+cluster21_1 <- subset(words_with_cluster21_3, subset=kmeans3 == 1)
+cluster21_2 <- subset(words_with_cluster21_3, subset=kmeans3 == 2)
+cluster21_3 <- subset(words_with_cluster21_3, subset=kmeans3 == 3)
+
+# set max overlap to Inf to show all the labels in the plot. This does however make the plot unreadable
+#options(ggrepel.max.overlaps = Inf)
+
+# visualize the k-means (with k = 3) clusters
+fviz_cluster(kmeans_fit3_cluster21, data = embedding_cluster21,
+palette = c("#2E9FDF", "#00AFBB", "#E7B800", "#FC4E07"),
+ellipse.type = "euclid", # Concentration ellipse
+star.plot = TRUE, # Add segments from centroids to items
+repel = TRUE, # Avoid label overplotting (slow)
+ggtheme = theme_minimal()
+)
+
+# CLUSTER ANALYSIS W2V BIGRAMS
+set.seed(88)
+# NOTE apparently forgot to run earlier on so the cluster assignments are not in line with the code below. 
+
 # fit the k-means clustering with 125 clusters on w2v bigrams embedding.
 kmeans_fit125_w2v <- kmeans(w2v_bigrams_embedding, 125, iter.max = 30, nstart = 25)
 
@@ -250,7 +283,9 @@ cluster125_w2v_117 <- subset(words_with_cluster125_w2v, subset=kmeans125 == 117)
 words_with_cluster125_w2v[words_with_cluster125_w2v$word == "family", ]
 
 cluster125_w2v_61 <- subset(words_with_cluster125_w2v, subset=kmeans125 == 61)
+
 ```
+
 
 # VISUALIZE THE RESULTS
 ```{r}
@@ -309,6 +344,150 @@ p <- ggplot(plot_df, aes(X1, X2)) +
   theme(legend.position = "none") +
   theme_minimal()
 p
+
+# TSNE VISUALIZATION OF CLUSTER 75 (ethnicity related cluster)
+# create plot of separate cluster with tsne
+embedding_cluster75 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_75$word)
+
+tsne_clst75 <- Rtsne(embedding_cluster75, dims = 2, perplexity = 20, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# create df that can be used for making the plot. 
+embedding_cluster75_plot <- as.data.frame(embedding_cluster75)
+
+embedding_cluster75_plot$word <- rownames(embedding_cluster75_plot)
+
+# create plot
+#colors = rainbow(length(unique(embedding_cluster91_plot$word)))
+#names(colors) = unique(embedding_cluster91_plot$word)
+
+plot_df <- data.frame(tsne_clst75 $Y) %>%
+  mutate(
+    word = embedding_cluster75_plot$word,
+  ) 
+p <- ggplot(plot_df, aes(X1, X2)) +
+  geom_text(aes(X1, X2, label = word), size = 3) +
+  xlab("") + ylab("") +
+  ggtitle("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster 75") +
+  theme(legend.position = "none") +
+  theme_minimal() + 
+  xlim(-15, 15)
+p
+
+# TSNE VISUALIZATION OF CLUSTER 17 (academic related cluster)
+# create plot of separate cluster with tsne
+embedding_cluster17 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_17$word)
+
+tsne_clst17 <- Rtsne(embedding_cluster17, dims = 2, perplexity = 25, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# create df that can be used for making the plot. 
+embedding_cluster17_plot <- as.data.frame(embedding_cluster17)
+
+embedding_cluster17_plot$word <- rownames(embedding_cluster17_plot)
+
+# create plot
+#colors = rainbow(length(unique(embedding_cluster91_plot$word)))
+#names(colors) = unique(embedding_cluster91_plot$word)
+
+plot_df <- data.frame(tsne_clst17 $Y) %>%
+  mutate(
+    word = embedding_cluster17_plot$word,
+  ) 
+p <- ggplot(plot_df, aes(X1, X2)) +
+  geom_text(aes(X1, X2, label = word), size = 3) +
+  xlab("") + ylab("") +
+  ggtitle("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster 17") +
+  theme(legend.position = "none") +
+  theme_minimal() +   
+  xlim(-8, 8)
+p
+
+
+# TSNE VISUALIZATION OF CLUSTER low silhouette average (cluster 124 with non, un, post, pre)
+# create plot of separate cluster with tsne
+embedding_cluster124 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_lowsil2$word)
+
+tsne_clst124 <- Rtsne(embedding_cluster124, dims = 2, perplexity = 20, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# create df that can be used for making the plot. 
+embedding_cluster124_plot <- as.data.frame(embedding_cluster124)
+
+embedding_cluster124_plot$word <- rownames(embedding_cluster124_plot)
+
+# create plot
+#colors = rainbow(length(unique(embedding_cluster91_plot$word)))
+#names(colors) = unique(embedding_cluster91_plot$word)
+
+plot_df <- data.frame(tsne_clst124 $Y) %>%
+  mutate(
+    word = embedding_cluster124_plot$word,
+  ) 
+p <- ggplot(plot_df, aes(X1, X2)) +
+  geom_text(aes(X1, X2, label = word), size = 3) +
+  xlab("") + ylab("") +
+  ggtitle("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster 124") +
+  theme(legend.position = "none") +
+  theme_minimal() +
+    xlim(-13, 12)
+p
+
+
+## VISUALIZATION OF PLOTS FROM CLUSTERING WIHT W2V EMBEDDINGS ##
+# TSNE VISUALIZATION OF CLUSTER 112 (emotional_dysregulation cluster)
+# create plot of separate cluster with tsne
+embedding_cluster112_w2v <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_w2v_112$word)
+
+tsne_clst_112_w2v <- Rtsne(embedding_cluster112_w2v, dims = 2, perplexity = 77, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# create df that can be used for making the plot. 
+embedding_cluster112_w2v_plot <- as.data.frame(embedding_cluster112_w2v)
+
+embedding_cluster112_w2v_plot$word <- rownames(embedding_cluster112_w2v_plot)
+
+# create plot
+#colors = rainbow(length(unique(embedding_cluster91_plot$word)))
+#names(colors) = unique(embedding_cluster91_plot$word)
+
+plot_df <- data.frame(tsne_clst_112_w2v $Y) %>%
+  mutate(
+    word = embedding_cluster112_w2v_plot$word,
+  ) 
+p <- ggplot(plot_df, aes(X1, X2)) +
+  geom_text(aes(X1, X2, label = word), size = 3) +
+  xlab("") + ylab("") +
+  ggtitle("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster 112 - W2V") +
+  theme(legend.position = "none") +
+  theme_minimal() +
+  xlim(-3.8, 3.5)
+p
+
+
+# TSNE VISUALIZATION OF CLUSTER W2V 117 (family related cluster)
+# create plot of separate cluster with tsne
+embedding_cluster117_w2v <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_w2v_117$word)
+
+tsne_clst_117_w2v <- Rtsne(embedding_cluster117_w2v, dims = 2, perplexity = 25, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# create df that can be used for making the plot. 
+embedding_cluster117_w2v_plot <- as.data.frame(embedding_cluster117_w2v)
+
+embedding_cluster117_w2v_plot$word <- rownames(embedding_cluster117_w2v_plot)
+
+# create plot
+#colors = rainbow(length(unique(embedding_cluster91_plot$word)))
+#names(colors) = unique(embedding_cluster91_plot$word)
+
+plot_df <- data.frame(tsne_clst_117_w2v $Y) %>%
+  mutate(
+    word = embedding_cluster117_w2v_plot$word,
+  ) 
+p <- ggplot(plot_df, aes(X1, X2)) +
+  geom_text(aes(X1, X2, label = word), size = 3) +
+  xlab("") + ylab("") +
+  ggtitle("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster 117 - W2V") +
+  theme(legend.position = "none") +
+  theme_minimal() +
+  xlim(-9, 6)
+p
 ```
 
 
@@ -317,12 +496,12 @@ p
 ```{r}
 library(clusterCrit)
 
-int_idx_75 <- intCriteria(glove_embedding, kmeans_fit75$cluster, c("Calinski_Harabasz", "Davies_Bouldin"))
+int_idx_75 <- intCriteria(glove_embedding, kmeans_fit75$cluster, c("Calinski_Harabasz", "Davies_Bouldin", "S_Dbw"))
 
-int_idx_100 <- intCriteria(glove_embedding, kmeans_fit100$cluster, c("Calinski_Harabasz", "Davies_Bouldin"))
+int_idx_100 <- intCriteria(glove_embedding, kmeans_fit100$cluster, c("Calinski_Harabasz", "Davies_Bouldin", "S_Dbw"))
 
-int_idx_125 <- intCriteria(glove_embedding, kmeans_fit125$cluster, c("Calinski_Harabasz", "Davies_Bouldin"))
+int_idx_125 <- intCriteria(glove_embedding, kmeans_fit125$cluster, c("Calinski_Harabasz", "Davies_Bouldin", "S_Dbw"))
 
-int_idx_150 <- intCriteria(glove_embedding, kmeans_fit150$cluster, c("Calinski_Harabasz", "Davies_Bouldin"))
+int_idx_150 <- intCriteria(glove_embedding, kmeans_fit150$cluster, c("Calinski_Harabasz", "Davies_Bouldin", "S_Dbw"))
 ```
 
