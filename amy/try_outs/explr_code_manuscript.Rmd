@@ -72,6 +72,7 @@ df <- na.omit(df, cols = "word")
 # create an object with the number of unique documents (articles) in the data frame (df) and the number of unique (author key-) words in the data frame. 
 number_docs_words <- c(docs = length(unique(df$doc)), words = 
                          length(unique(df$word)))
+# note that these where the number of documents and unique terms reported in the paper come from. This is however incorrect because it is before applying the exclusion filter. 
 
 # save this information(# of articles and # of unique author keywords) in a yaml file 
 yaml::write_yaml(number_docs_words, "study1_number_docs_words.txt")
@@ -128,5 +129,12 @@ df[df$word_coded == "age", c("word", "word_coded")]
 
 # check a word that is not in the dictionary
 df[df$word_coded == "aboriginal", c("word", "word_coded")]
+```
+
+# check author keywords
+```{r}
+df$numDE <- sapply(strsplit(df$DE, ";"), length)
+
+unique(df[df$numDE  >= 15, c("TI", "AU", "numDE", "doc")])
 ```
 
