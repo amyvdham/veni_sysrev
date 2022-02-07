@@ -198,10 +198,10 @@ First load all the embeddings
 ```{r}
 # Load all the embeddings
 # glove embedding 
-glove_embedding <-  readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/glove_embedding_final.RData")
+glove_embedding <-  readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/glove_embedding_final.RData")
 
 # glove embedding including bigrams
-glove_bigrams_embedding <-  readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/glove_embedding_bigrams.RData")
+glove_bigrams_embedding <-  readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/glove_embedding_bigrams.RData")
 
 # w2v embedding 
 w2v_embedding <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/w2v_embedding.RData")
@@ -221,7 +221,7 @@ length(unique((rownames(glove_embedding))))
 
 # non-GloVe: check which words are in the final filter but are not in the glove embedding data and are therefore lost (unwanted).
 lost_glove <- subset(final_filter, !(filter_lemma %in% rownames(glove_embedding)))
-# 2,182 words lost  
+# 2,185 words lost  (had hier eerder 2,182 staan maar het lijkt erop dat dit een typo was)
 
 length(unique(rownames(glove_embedding))) + length(unique((lost_glove$filter_lemma)))
 # -> 13,747. Which is equal to the line of code below. 
