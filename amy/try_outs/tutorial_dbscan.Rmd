@@ -24,7 +24,7 @@ library(fpc)
 library(dbscan)
 ```
 
-# set.seed prior to running the k-means clustering 
+# set.seed 
 ```{r}
 set.seed(88)
 ```
@@ -32,7 +32,7 @@ set.seed(88)
 # Load needed datafiles
 ```{r}
 # load glove word embedding file
-glove_embedding <- readRDS("glove_embedding.RData")
+glove_embedding <- readRDS("glove_embedding_final.RData")
 
 # check structure
 str(glove_embedding)
@@ -52,39 +52,39 @@ fviz_cluster(db, glove_embedding, stand = FALSE, frame = FALSE, geom = "point")
 
 # Print DBSCAN results 
 print(db)
-# -> gives one big cluster and 402 noise points 
-
-# cluster membership
-db$cluster
+# -> gives one big cluster and 411 noise points 
 
 # determine minPts 
 library(SciViews)
 # I have found online that you should set minPts to ln(n) so that is why this is calculated below. 
-ln(12743)
+ln(11562)
 
 # determining optimal eps value
 dbscan::kNNdistplot(glove_embedding, k =  9)
-abline(h = 7.9, lty = 2)
-# -> based on this plot I would set eps to either 4.6 or 7.9 but not sure if I interpreted it correctly 
+abline(h = 4.8, lty = 2)
+abline(h = 8.3, lty = 2)
+# -> based on this plot I would set eps to either 4.8 or 8.3 but not sure if I interpreted it correctly 
 
-# based on the running the codelines above try dbscan with minPts = 9 and eps = 7.9
-db_7.9_9 <- dbscan::dbscan(glove_embedding, 7.9, 9) 
-print(db_7.9_9)
+# based on the running the codelines above try dbscan with minPts = 9 and eps = 8.3 and 4.8
+db_8.3_9 <- dbscan::dbscan(glove_embedding, 8.3, 9) 
+print(db_8.3_9)
 
-db_4.6_9 <- dbscan::dbscan(glove_embedding, 4.6, 9) 
-print(db_4.6_9)
+db_4.8_9 <- dbscan::dbscan(glove_embedding, 4.8, 9) 
+print(db_4.8_9)
 
 # Create data frame in which the cluster assignment is merged back to rows/word. 
-kw_with_cluster <- as.data.frame(cbind(row.names(glove_embedding), db_4.6_9$cluster))
-names(kw_with_cluster) <- c("word", "dbscan7")
+kw_with_cluster <- as.data.frame(cbind(row.names(glove_embedding), db_4.8_9$cluster))
+names(kw_with_cluster) <- c("word", "dbscan9")
 
-cluster1 <- subset(kw_with_cluster, subset=dbscan7 == 1)
-cluster2 <- subset(kw_with_cluster, subset=dbscan7 == 2)
-cluster3 <- subset(kw_with_cluster, subset=dbscan7 == 3)
-cluster4 <- subset(kw_with_cluster, subset=dbscan7 == 4)
-cluster5 <- subset(kw_with_cluster, subset=dbscan7 == 5)
-cluster6 <- subset(kw_with_cluster, subset=dbscan7 == 6)
-cluster7 <- subset(kw_with_cluster, subset=dbscan7 == 7)
+cluster1 <- subset(kw_with_cluster, subset=dbscan9 == 1)
+cluster2 <- subset(kw_with_cluster, subset=dbscan9 == 2)
+cluster3 <- subset(kw_with_cluster, subset=dbscan9 == 3)
+cluster4 <- subset(kw_with_cluster, subset=dbscan9 == 4)
+cluster5 <- subset(kw_with_cluster, subset=dbscan9 == 5)
+cluster6 <- subset(kw_with_cluster, subset=dbscan9 == 6)
+cluster7 <- subset(kw_with_cluster, subset=dbscan9 == 7)
+cluster8 <- subset(kw_with_cluster, subset=dbscan9 == 8)
+cluster9 <- subset(kw_with_cluster, subset=dbscan9 == 9)
 
 # I have also read somewhere that you should set minPts to 2*dim. Which in our case means 2*300 = 600. Let try what happens if we do that
 # determining optimal eps value
@@ -103,7 +103,27 @@ db4 <- dbscan::dbscan(glove_embedding, 4, 5)
 
 # Print DBSCAN results 
 print(db4)
-# gives 17 clusters but many noise points (12557)
+# gives 17 clusters but many noise points (11408)
+
+# Create data frame in which the cluster assignment is merged back to rows/word. 
+kw_with_cluster <- as.data.frame(cbind(row.names(glove_embedding), db4$cluster))
+names(kw_with_cluster) <- c("word", "dbscan4")
+
+cluster13_1 <- subset(kw_with_cluster, subset=dbscan4 == 1)
+cluster13_2 <- subset(kw_with_cluster, subset=dbscan4 == 2)
+cluster13_3 <- subset(kw_with_cluster, subset=dbscan4 == 3)
+cluster13_4 <- subset(kw_with_cluster, subset=dbscan4 == 4)
+cluster13_5 <- subset(kw_with_cluster, subset=dbscan4 == 5)
+cluster13_6 <- subset(kw_with_cluster, subset=dbscan4 == 6)
+cluster13_7 <- subset(kw_with_cluster, subset=dbscan4 == 7)
+cluster13_8 <- subset(kw_with_cluster, subset=dbscan4 == 8)
+cluster13_9 <- subset(kw_with_cluster, subset=dbscan4 == 9)
+cluster13_10 <- subset(kw_with_cluster, subset=dbscan4 == 10)
+cluster13_11 <- subset(kw_with_cluster, subset=dbscan4 == 11)
+cluster13_12 <- subset(kw_with_cluster, subset=dbscan4 == 12)
+
+cluster13_13 <- subset(kw_with_cluster, subset=dbscan4 == 13)
+
 
 # try dbscan met een andere minPts value
 db4_10 <- dbscan::dbscan(glove_embedding, 4, 10) 
@@ -112,7 +132,7 @@ print(db4_10)
 # random attempt
 db_ra <- dbscan::dbscan(glove_embedding, .25, 10) 
 print(db_ra)
-
+# -> results in all observations being classified as noise.
 
 # try dbscan with smaller eps. : eps = 0.10
 db10_4 <- dbscan::dbscan(glove_embedding, 0.10, 4) 
@@ -122,10 +142,5 @@ print(db10_4)
 # try dbscan with lager eps. : eps = 0.35
 db1.5_4 <- dbscan::dbscan(glove_embedding, 1.5, 10000) 
 print(db1.5_4)
+# -> results in all observations being classified as noise.
 ```
-The method proposed here consists of computing the k-nearest neighbor distances in a matrix of points.
-
-The idea is to calculate, the average of the distances of every point to its k nearest neighbors. **The value of k will be specified by the user and corresponds to MinPts.**
-
-Next, these k-distances are plotted in an ascending order. The aim is to determine the “knee”, which corresponds to the optimal eps parameter
-
