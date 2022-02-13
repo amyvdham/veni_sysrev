@@ -1,0 +1,385 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+
+
+
+```{r}
+# load the library that contains the Rtsne function 
+library(Rtsne)
+
+# t-SNE visualization of cluster 97 (smallest cluster - GloVe (k = 125))
+# create subset of terms and their associated word vectors that belong to cluster 97
+embedding_cluster97 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_97$word)
+
+# apply t-sne 
+tsne_clst97 <- Rtsne(embedding_cluster97, dims = 2, perplexity = 10, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# Function for creating separate 
+# create function for creating plot of separate clusters 
+plot_cluster_tsne <-function(tsne_clst, embedding_cluster, clst_number){
+  
+# create data frame of matrix that can be used for making the plot
+cluster_embedding_plot <- as.data.frame(embedding_cluster)
+# create a column with the terms
+cluster_embedding_plot$word <- rownames(cluster_embedding_plot)
+
+  plot_df <- data.frame(tsne_clst$Y) %>%
+  mutate(
+    word = cluster_embedding_plot$word,
+  ) 
+  
+p <- ggplot(plot_df, aes(X1, X2)) +
+  geom_text(aes(X1, X2, label = word), size = 3) +
+  xlab("") + ylab("") +
+  ggtitle(paste0("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster ", clst_number)) +
+  theme(legend.position = "none") +
+  theme_minimal()
+
+return(p)
+}
+
+# call function to create plot
+plot_cluster_tsne(tsne_clst97, embedding_cluster97, clst_number = 97)
+```
+
+# script oud
+```{r}
+# load the library that contains the Rtsne function 
+library(Rtsne)
+
+# t-SNE visualization of cluster 97 (smallest cluster - GloVe (k = 125))
+# create subset of terms and their associated word vectors that belong to cluster 97
+embedding_cluster97 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_97$word)
+
+# apply t-sne 
+set.seed(88)
+tsne_clst97 <- Rtsne(embedding_cluster97, dims = 2, perplexity = 10, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# Function for creating separate 
+# create function for creating plot of separate clusters 
+plot_cluster_tsne <-function(tsne_clst, embedding_cluster, clst_number){
+  
+# create data frame of matrix that can be used for making the plot
+cluster_embedding_plot <- as.data.frame(embedding_cluster)
+# create a column with the terms
+cluster_embedding_plot$word <- rownames(cluster_embedding_plot)
+
+  plot_df <- data.frame(tsne_clst$Y) %>%
+  mutate(
+    word = cluster_embedding_plot$word,
+  ) 
+  
+p <- ggplot(plot_df, aes(X1, X2)) +
+  geom_text(aes(X1, X2, label = word), size = 3) +
+  xlab("") + ylab("") +
+  ggtitle(paste0("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster ", clst_number)) +
+  theme(legend.position = "none") +
+  theme_minimal()
+
+return(p)
+}
+
+# call function to create plot
+plot_cluster_tsne(tsne_clst97, embedding_cluster97, clst_number = 97)
+
+# t-SNE visualization of cluster 80 (family related - GloVe (k = 125))
+# create subset of terms and their associated word vectors that belong to cluster 80
+embedding_cluster80 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_80$word)
+
+# apply t-sne
+set.seed(88)
+tsne_clst80 <- Rtsne(embedding_cluster80, dims = 2, perplexity = 25, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# call function to create plot
+plot_cluster_tsne(tsne_clst80, embedding_cluster80, 80)
+
+# TSNE VISUALIZATION OF CLUSTER 75 (ethnicity related cluster)
+# create plot of separate cluster with tsne
+embedding_cluster75 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_75$word)
+
+tsne_clst75 <- Rtsne(embedding_cluster75, dims = 2, perplexity = 20, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# create df that can be used for making the plot. 
+embedding_cluster75_plot <- as.data.frame(embedding_cluster75)
+
+embedding_cluster75_plot$word <- rownames(embedding_cluster75_plot)
+
+
+plot_df <- data.frame(tsne_clst75 $Y) %>%
+  mutate(
+    word = embedding_cluster75_plot$word,
+  ) 
+
+p <- ggplot(plot_df, aes(X1, X2)) +
+  geom_text(aes(X1, X2, label = word), size = 3) +
+  xlab("") + ylab("") +
+  ggtitle("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster 75") +
+  theme(legend.position = "none") +
+  theme_minimal() + 
+  xlim(-15, 15)
+p
+
+# TSNE VISUALIZATION OF CLUSTER 17 (academic related cluster)
+# create plot of separate cluster with tsne
+embedding_cluster17 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_17$word)
+
+tsne_clst17 <- Rtsne(embedding_cluster17, dims = 2, perplexity = 25, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# create df that can be used for making the plot. 
+embedding_cluster17_plot <- as.data.frame(embedding_cluster17)
+
+embedding_cluster17_plot$word <- rownames(embedding_cluster17_plot)
+
+# create plot
+#colors = rainbow(length(unique(embedding_cluster91_plot$word)))
+#names(colors) = unique(embedding_cluster91_plot$word)
+
+plot_df <- data.frame(tsne_clst17 $Y) %>%
+  mutate(
+    word = embedding_cluster17_plot$word,
+  ) 
+p <- ggplot(plot_df, aes(X1, X2)) +
+  geom_text(aes(X1, X2, label = word), size = 3) +
+  xlab("") + ylab("") +
+  ggtitle("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster 17") +
+  theme(legend.position = "none") +
+  theme_minimal() +   
+  xlim(-8, 8)
+p
+
+
+# TSNE VISUALIZATION OF CLUSTER low silhouette average (cluster 124 with non, un, post, pre)
+# create plot of separate cluster with tsne
+embedding_cluster124 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_lowsil2$word)
+
+tsne_clst124 <- Rtsne(embedding_cluster124, dims = 2, perplexity = 20, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# create df that can be used for making the plot. 
+embedding_cluster124_plot <- as.data.frame(embedding_cluster124)
+
+embedding_cluster124_plot$word <- rownames(embedding_cluster124_plot)
+
+# create plot
+#colors = rainbow(length(unique(embedding_cluster91_plot$word)))
+#names(colors) = unique(embedding_cluster91_plot$word)
+
+plot_df <- data.frame(tsne_clst124 $Y) %>%
+  mutate(
+    word = embedding_cluster124_plot$word,
+  ) 
+p <- ggplot(plot_df, aes(X1, X2)) +
+  geom_text(aes(X1, X2, label = word), size = 3) +
+  xlab("") + ylab("") +
+  ggtitle("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster 124") +
+  theme(legend.position = "none") +
+  theme_minimal() +
+    xlim(-13, 12)
+p
+
+
+## VISUALIZATION OF PLOTS FROM CLUSTERING WIHT W2V EMBEDDINGS ##
+# TSNE VISUALIZATION OF CLUSTER 112 (emotional_dysregulation cluster)
+# create plot of separate cluster with tsne
+embedding_cluster59_w2v <- subset(w2v_bigrams_embedding, rownames(w2v_bigrams_embedding) %in% cluster125_w2v_59$word)
+
+tsne_clst_59_w2v <- Rtsne(embedding_cluster59_w2v, dims = 2, perplexity = 95, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# create df that can be used for making the plot. 
+embedding_cluster59_w2v_plot <- as.data.frame(embedding_cluster59_w2v)
+
+embedding_cluster59_w2v_plot$word <- rownames(embedding_cluster59_w2v_plot)
+
+# create plot
+#colors = rainbow(length(unique(embedding_cluster91_plot$word)))
+#names(colors) = unique(embedding_cluster91_plot$word)
+
+plot_df <- data.frame(tsne_clst_59_w2v$Y) %>%
+  mutate(
+    word = embedding_cluster59_w2v_plot$word,
+  ) 
+p <- ggplot(plot_df, aes(X1, X2)) +
+  geom_text(aes(X1, X2, label = word, colour = word == "emotional_dysregulation"), size = 3, show.legend = FALSE) +
+  xlab("") + ylab("") +
+  ggtitle("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster 59 - W2V") +
+  scale_colour_manual(values=c("#000000", "#ffcc00")) +
+  theme(legend.position = "none") +
+  
+  theme_minimal() 
+p
+
+
+# TSNE VISUALIZATION OF CLUSTER W2V 117 (family related cluster)
+# note that for some reason the plots below do not show the bigrams. 
+# create plot of separate cluster with tsne
+embedding_cluster113_w2v <- subset(w2v_bigrams_embedding, rownames(w2v_bigrams_embedding) %in% cluster125_w2v_113$word)
+
+tsne_clst_113_w2v <- Rtsne(embedding_cluster113_w2v, dims = 2, perplexity = 18, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# create df that can be used for making the plot. 
+embedding_cluster113_w2v_plot <- as.data.frame(embedding_cluster113_w2v)
+
+embedding_cluster113_w2v_plot$word <- rownames(embedding_cluster113_w2v_plot)
+
+# create plot
+#colors = rainbow(length(unique(embedding_cluster91_plot$word)))
+#names(colors) = unique(embedding_cluster91_plot$word)
+
+plot_df <- data.frame(tsne_clst_113_w2v$Y) %>%
+  mutate(
+    word = embedding_cluster113_w2v_plot$word,
+  ) 
+p <- ggplot(plot_df, aes(X1, X2)) +
+  geom_text(aes(X1, X2, label = word), size = 3) +
+  xlab("") + ylab("") +
+  ggtitle("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster 113 - W2V") +
+  theme(legend.position = "none") +
+  theme_minimal() +
+  xlim(-35, 38)
+p
+```
+
+# script nieuw als functie 
+```{r}
+# load the library that contains the Rtsne function 
+library(Rtsne)
+
+# t-SNE visualization of cluster 97 (smallest cluster ) - GloVe (k = 125)
+# create subset of terms and their associated word vectors that belong to cluster 97
+embedding_cluster97 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_97$word)
+
+# apply t-sne 
+set.seed(88)
+tsne_clst97 <- Rtsne(embedding_cluster97, dims = 2, perplexity = 10, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# Function for creating separate 
+# create function for creating plot of separate clusters 
+plot_cluster_tsne <-function(tsne_clst, embedding_cluster, clst_number){
+  
+# create data frame of matrix that can be used for making the plot
+cluster_embedding_plot <- as.data.frame(embedding_cluster)
+# create a column with the terms
+cluster_embedding_plot$word <- rownames(cluster_embedding_plot)
+
+  plot_df <- data.frame(tsne_clst$Y) %>%
+  mutate(
+    word = cluster_embedding_plot$word,
+  ) 
+  
+p <- ggplot(plot_df, aes(X1, X2)) +
+  geom_text(aes(X1, X2, label = word), size = 3) +
+  xlab("") + ylab("") +
+  ggtitle(paste0("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster ", clst_number)) +
+  theme(legend.position = "none") +
+  theme_minimal()
+
+return(p)
+}
+
+# call function to create plot
+plot_cluster_tsne(tsne_clst97, embedding_cluster97, clst_number = 97)
+
+# t-SNE visualization of cluster 80 (family related) - GloVe (k = 125)
+# create subset of terms and their associated word vectors that belong to cluster 80
+embedding_cluster80 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_80$word)
+
+# apply t-sne
+set.seed(88)
+tsne_clst80 <- Rtsne(embedding_cluster80, dims = 2, perplexity = 25, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# call function to create plot
+plot_cluster_tsne(tsne_clst80, embedding_cluster80, 80)
+
+
+# t-SNE visualization of cluster 75 (ethnicity related) - GloVe (k = 125)
+# create subset of terms and their associated word vectors that belong to cluster 75
+embedding_cluster75 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_75$word)
+
+# apply t-sne
+set.seed(88)
+tsne_clst75 <- Rtsne(embedding_cluster75, dims = 2, perplexity = 20, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# call function to create plot
+plot_cluster_tsne(tsne_clst75, embedding_cluster75, 75)
+
+# t-SNE visualization of cluster 17 (academic related) - GloVe (k = 125)
+# create subset of terms and their associated word vectors that belong to cluster 17
+embedding_cluster17 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_17$word)
+
+# apply t-sne
+set.seed(88)
+tsne_clst17 <- Rtsne(embedding_cluster17, dims = 2, perplexity = 25, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# call function to create plot
+plot_cluster_tsne(tsne_clst17, embedding_cluster17, 17)
+
+# check if this will work without xlim
+## xlim(-8, 8)
+
+
+# t-SNE visualization of cluster 124 (low silhouette average and terms with non, un, post, pre) - GloVe (k = 125)
+# create subset of terms and their associated word vectors that belong to cluster 124
+embedding_cluster124 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_lowsil2$word)
+
+# apply t-sne
+set.seed(88)
+tsne_clst124 <- Rtsne(embedding_cluster124, dims = 2, perplexity = 20, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# call function to create plot
+plot_cluster_tsne(tsne_clst17, embedding_cluster17, 17)
+
+# check if this will work without xlim
+## xlim(-13, 12)
+
+# t-SNE visualization of cluster 59 (smallest cluster) - Word2Vec including bigrams (k = 125)
+# create subset of terms and their associated word vectors that belong to cluster 59
+embedding_cluster59_w2v <- subset(w2v_bigrams_embedding, rownames(w2v_bigrams_embedding) %in% cluster125_w2v_59$word)
+
+# apply t-sne
+set.seed(88)
+tsne_clst_59_w2v <- Rtsne(embedding_cluster59_w2v, dims = 2, perplexity = 50, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# call function to create plot
+plot_cluster_tsne(tsne_clst_59_w2v, embedding_cluster59_w2v, clst_number = "59 - w2v")
+
+# Note here the plot is created as followed 
+p <- ggplot(plot_df, aes(X1, X2)) +
+  geom_text(aes(X1, X2, label = word, colour = word == "emotional_dysregulation"), size = 3, show.legend = FALSE) +
+  xlab("") + ylab("") +
+  ggtitle("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster 59 - W2V") +
+  scale_colour_manual(values=c("#000000", "#ffcc00")) +
+  theme(legend.position = "none") +
+  
+  theme_minimal() 
+p
+# check how I can add 
+  colour = word == "emotional_dysregulation"#) and 
+  scale_colour_manual(values=c("#000000", "#ffcc00")) +
+
+# t-SNE visualization of cluster 113 (family related) - Word2Vec including bigrams (k = 125)
+# create subset of terms and their associated word vectors that belong to cluster 113   
+embedding_cluster113_w2v <- subset(w2v_bigrams_embedding, rownames(w2v_bigrams_embedding) %in% cluster125_w2v_113$word)
+
+# apply t-sne
+set.seed(88)
+tsne_clst_113_w2v <- Rtsne(embedding_cluster113_w2v, dims = 2, perplexity = 18, verbose=TRUE, max_iter = 500, pca = TRUE)
+
+# call function to create plot
+plot_cluster_tsne(tsne_clst_59_w2v, embedding_cluster59_w2v, clst_number = "59 - w2v")
+
+# check if this will work without xlim
+## xlim(-35, 38)
+
+# call function to create plot
+test <- plot_cluster_tsne(tsne_clst_113_w2v, embedding_cluster113_w2v, clst_number = "113 - w2v")
+
+# when it is needed to adjust the limits of the x-as this can be done with the line of code below. Import is to save the plot that results from calling the function in a object (like test in this example). 
+test +
+  xlim(-25, 30)
+
+```
+
+
