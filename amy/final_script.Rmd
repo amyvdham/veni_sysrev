@@ -18,10 +18,16 @@ library(udpipe)
 library(tidytext)
 library(textrank)
 library(data.table, quietly = TRUE, warn.conflicts = FALSE)
+library(dplyr)
+library(cluster)
+library(ggplot2)
+library(devtools)
+library(factoextra)
 ```
 
+
 ## Pre-proccessing - steps from original manuscript
-Code in the block below shows the pre-processing that has been done in the original manuscript. I follow the same steps but do no run the text rank algorithm and do not apply the dictionary filter an exclusion of methodological terms. 
+Code in the block below shows the pre-processing that have been done in the original manuscript. I follow the same steps but do no run the text rank algorithm and do not apply the dictionary filter and exclusion of methodological terms. 
 
 Steps that are applied: 
 - to lower
@@ -30,6 +36,7 @@ Steps that are applied:
 
 
 ```{r}
+# check if file already exists, if not, code will be run to create the file
 filenam1 <- "data_study2.RData"
 if(!file.exists(filenam1)){
   
@@ -69,12 +76,12 @@ df_kw <- df[upos %in% c("NOUN", "ADJ"), ]
 # check the unique number of documents after extracting noun and adjectives.
 length(unique(df$doc_id))
 length(unique(df_kw$doc_id))
-# -> 6098. This is interesting because it means that 207 unique abstracts are dropped because they do not contain a noun or adjective.
+# -> 6098. This is interesting because this means that 207 unique abstracts are dropped because they do not contain a noun or adjective.
 
 # make sure to only include strings that start with a letter. (. -> and end with any character?)
 df_kw <- df_kw[grepl("^[a-zA-Z].", df_kw$lemma), ]
 
-# save the data frame of these first steps. 
+# save the data frame of which these first steps have been applied. 
 saveRDS(df_kw, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/data_study2.RData")
 
 } else {
@@ -93,17 +100,18 @@ Apply more pre - processing steps.
   - Remove stopwords
 
 ```{r}
-# check number of unique words before applying more filters
+# check number of unique words before applying more pre-processing steps
 length(unique(df_kw$lemma))
 # 15515
 
+# check if file already exists, if not, code will be run to create the file 
 filenam3 <- "study2_df_lemma.RData"
 if(!file.exists(filenam3)){
 
-# create data frame on which preprocessing will be applied 
+# create data frame on which pre processing will be applied 
 lemma_clean <- df_kw
 
-# add lemma_filter column to dataframe so we keep the original column and filter can be applied on the new column. 
+# add lemma_filter column to data frame so we keep the original column and filter can be applied on the new column. 
 lemma_clean$filter_lemma <- df_kw$lemma
 
 # SPLIT AT - 
@@ -111,21 +119,21 @@ library(splitstackshape)
 # Split words in lemma column on the - 
 lemma_clean <- cSplit(lemma_clean, "filter_lemma", "-", direction = "long")
 
-# check results by looking at a term that contains - in original lemma column on which the filter has not been applied. 
+# check results by looking at a term that contains - in original lemma column on which the filter has not been applied
 lemma_clean[lemma_clean$lemma == "non-risk", c("lemma", "filter_lemma", "doc_id")]
 
 # SPLIT AT /
 # Split words in lemma column on the /
 lemma_clean <- cSplit(lemma_clean, "filter_lemma", "/", direction = "long")
 
-# check results by looking at term that contains / in original lemma column on which the filter has not been applied. 
+# check results by looking at term that contains / in original lemma column on which the filter has not been applied 
 lemma_clean[lemma_clean$lemma == "police/judicial", c("lemma", "filter_lemma", "doc_id")]
 
 # REMOVE NON-ASCII CHARACTERS 
 # remove all the non-alphanumeric characters from words in lemma column
 lemma_clean$filter_lemma <- str_replace_all(lemma_clean$filter_lemma, "[^[:alnum:]]", "")
 
-# check results by looking at term that contains a non-ASCII character in original lemma column on which the filter has not been applied. 
+# check results by looking at term that contains a non-ASCII character in original lemma column on which the filter has not been applied 
 lemma_clean[lemma_clean$lemma == "p=.47", c("lemma", "filter_lemma", "doc_id")]
 
 # remove all the digit characters from words in lemma column
@@ -139,11 +147,11 @@ length(unique(lemma_clean$filter_lemma))
 # 14065
 
 # REMOVING STOPWORDS.
-# use stopwords from tidytext. 
+# use stopwords from tidytext 
 library(tidyverse)
 lemma_clean <- lemma_clean %>%
   anti_join(stop_words, by= c("filter_lemma" = "word"))
-# Note that the stopwords are removed from the dataset so this also effects the original lemma column. 
+# -> Note that the stopwords are removed from the data set so this also effects the original lemma column
 
 # check number of unique words after removing stop words
 length(unique(lemma_clean$filter_lemma))
@@ -159,17 +167,18 @@ saveRDS(lemma_clean, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni
 ```
 
 
-# SAVE DATAFRAME WITH ONLY THE FILTER COLUMN
-I also save a date frame with only the filter column and keeping only the unique terms. So that I can easily use that to apply the filter on the glove (and word2vec) embedding data. 
+## Save dataframe which only includes the filter column - final filter
+I also save a date frame with only the filter column and keeping only the unique terms. This filter can than be easily applied on the datasets with the pre-trained GloVe and Word2Vec word vectors.  
 
 ```{r}
-# SAVE FILTER_LEMMA
+# SAVE.RData OBJECT WHICH ONLY CONTAINS THE FILTER_LEMMA COLUMN.
+# check if file already exists, if not, code will be run to create the file 
 filenam4 <- "final_filter.RData"
 if(!file.exists(filenam4)){
 # create data frame with column doc_id term and add a term frequency per doc column column
 nounbydoc_lemma <- lemma_clean[, list(freq = .N), by = list(doc_id = doc_id, term = filter_lemma)]
 
-# check number of unique words and documents. 
+# check number of unique words and documents
 length(unique(nounbydoc_lemma$doc_id)) 
 length(unique(nounbydoc_lemma$term)) 
 
@@ -179,28 +188,31 @@ filter_lemma <- as.data.table(filter_lemma)
 
 saveRDS(filter_lemma, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/final_filter.RData")
 
-# since the word2vec vectors are loaded into Python we also need to save this filter as .csv
-write.csv(filter_lemma,"/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/final_filter.csv", row.names = FALSE)
-
 } else {
   filter_lemma <- readRDS(filenam4)
 }
+
+# IMPORTANT TO MAKE SURE THIS CSV BELOW IS CREATED BEFORE RUNNING THE PYTHON SCRIPT (create_w2v_embedding.py) IN WHICH THE WORD VECTORS ARE EXTRACTED FROM THE PRETRAINED WORD2VEC DATASET
+
+# since the word2vec vectors are loaded into Python we also need to save this filter as a .csv file
+write.csv(filter_lemma,"/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/final_filter.csv", row.names = FALSE)
 ```
 
-# WORD2VEC FILTER (INCLUDING BIGRAMS)
-Create filter in which bigrams are also include to see if these can be found in the word2vec embedding. 
+## Save dataframe which only includes the filter column - bigrams filter (Word2Vec)
+Create filter in which bigrams are also included. For the Word2vec dataset bigrams need to be separated with a underscore (_). 
 
 ```{r}
+# check if file already exists, if not, code will be run to create the file 
 filenam5 <- "bigrams_filter.RData"
 if(!file.exists(filenam5)){
 
 # apply text_rank function for identifying bigrams. Seperate them with _ 
 kw_tr <- textrank_keywords(x =  lemma_clean$filter_lemma[lemma_clean$upos %in% c("NOUN", "ADJ")], ngram_max = 2, sep = "_")
 
-# merge bi grams to dataset 
+# merge bigrams to data set 
 lemma_clean$keyword <- txt_recode_ngram(lemma_clean$filter_lemma, compound = kw_tr$keywords$keyword, ngram = kw_tr$keywords$ngram, sep = "_")
 
-# investigating text rank results
+# investigate text rank results
 stats <- subset(kw_tr$keywords, ngram > 1 & freq >= 5)
 head(stats, 30)
 
@@ -212,7 +224,7 @@ bigrams_data <- melt(lemma_clean, id.var = 1:14, variable.name = 'lemma_or_keywo
 bigrams_data <- bigrams_data[!is.na(bigrams_data$value), ]
 bigrams_data <- as.data.table(bigrams_data)
 
-# SAVE filter with bigrams
+# Save filter with bigrams as .RData object
 # create data frame with column doc_id term and add a term frequency per doc column column
 nounbydoc_bigrams <- bigrams_data[, 
                                   list(freq = .N), 
@@ -222,36 +234,38 @@ nounbydoc_bigrams <- bigrams_data[,
 length(unique(nounbydoc_bigrams$doc_id)) 
 length(unique(nounbydoc_bigrams$term)) 
 
-# check 
 # create a data frame with one column including the unique terms
 filter_bigrams <- unique(nounbydoc_bigrams$term)
 filter_bigrams <- as.data.table(filter_bigrams)
 
 saveRDS(filter_bigrams, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/bigrams_filter.RData")
 
-# since the word2vec vectors are loaded into Python we also need to save this filter as .csv
-write.csv(filter_bigrams,"/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/bigrams_filter.csv", row.names = FALSE)
-
 } else {
   filter_bigrams <- readRDS(filenam5)
 }
 
+# IMPORTANT TO MAKE SURE THIS CSV BELOW IS CREATED BEFORE RUNNING THE PYTHON SCRIPT (create_w2v_emb_bigrams.py) IN WHICH THE WORD VECTORS ARE EXTRACTED FROM THE PRETRAINED WORD2VEC DATASET
+
+# since the word2vec vectors are loaded into Python we also need to save this filter as a .csv file. 
+write.csv(filter_bigrams,"/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/bigrams_filter.csv", row.names = FALSE)
 ```
 
 
-# GloVe FILTER (INCLUDING BIGRAMS)
-Create filter in which bigrams are also include to see if these can be found in the glove embedding. Bigrams in the glove embedding are separated with - instead of _ . Therefore a separate filter has to be made with bigrams that can be applied on the glove embedding. 
+## Save dataframe which only includes the filter column - bigrams filter (GloVe)
+Create filter in which bigrams are also included. For the GloVe dataset bigrams need to be separated with a dash (-). 
 
 ```{r}
+# check if file already exists, if not, code will be run to create the file 
 filenam6 <- "bigrams_filter_glove.RData"
 if(!file.exists(filenam6)){
+  
 # apply text_rank function for identifying bigrams. Seperate them with -
 kw_tr_glove <- textrank_keywords(x =  lemma_clean$filter_lemma[lemma_clean$upos %in% c("NOUN", "ADJ")], ngram_max = 2, sep = "-")
 
-# merge bi grams to dataset 
+# merge bigrams to data set 
 lemma_clean$keyword <- txt_recode_ngram(lemma_clean$filter_lemma, compound = kw_tr_glove$keywords$keyword, ngram = kw_tr_glove$keywords$ngram, sep = "-")
 
-# investigating text rank results
+# investigate text rank results
 stats <- subset(kw_tr_glove$keywords, ngram > 1 & freq >= 5)
 head(stats, 30)
 
@@ -263,18 +277,17 @@ bigrams_data <- bigrams_data[!is.na(bigrams_data$value), ]
 bigrams_data <- as.data.table(bigrams_data)
 is.data.table(bigrams_data)
 
-# SAVE filter with bigrams seperated with - instead of _ to apply on glove embedding
+# Save filter with bigrams separated with - instead of _ as .RData object 
 # create data frame with column doc_id term and add a term frequency per doc column column
 nounbydoc_bigrams_glove <- bigrams_data[, 
                                   list(freq = .N), 
                                   by = list(doc_id = doc_id, 
                                             term = value)]
 
-# check number of unique words and documents. 
+# check number of unique words and documents 
 length(unique(nounbydoc_bigrams_glove$doc_id)) 
 length(unique(nounbydoc_bigrams_glove$term)) 
 
-# check 
 # create a data frame with one column including the unique terms
 filter_bigrams_glove <- unique(nounbydoc_bigrams_glove$term)
 filter_bigrams_glove <- as.data.table(filter_bigrams_glove)
@@ -286,14 +299,83 @@ saveRDS(filter_bigrams_glove, "/Users/amyvanderham/Documents/Research_Assistant_
 }
 ```
 
-#### BESTAND SAVE_FILTERS_AND_EMBEDDINGS VANAF HIER. 
-# Clean and save the dataframes with vectors which are extracted from the existing embedding by using the filters. 
-clean and save file with w2v word vector embeddings. 
+## Extract word vectors from data set with pretained word vectors and clean data frame in which these will be saved - GLoVe.
+
+The filters that are created above and contain the terms that we are interested in for this current research, are used to extract the word vectors of these terms from the existing pre-trained word vectors (GloVe and Word2Vec datasets). 
+
 ```{r}
-filenam7 <- "w2v_embedding_final.RData"
+# check if file already exists, if not, code will be run to create the file 
+filenam7 <- "glove_embedding_final.RData"
 if(!file.exists(filenam7)){
 
-# load pretrained word2vec which has been created in the Python file: create_w2v_embedding.py
+# load data set with existing pre-trained glove vectors into R
+vectors_glove <- data.table::fread('glove.840B.300d.txt', data.table = F,  encoding = 'UTF-8', quote="") 
+
+# rename the columns
+colnames(vectors_glove) <- c('word',paste('dim',1:300,sep = '_'))
+
+# create df in which only the words that we want to be included are kept (i.e., extract word vectors for terms in filter data frame from the glove data set)
+filtered_embedding <- subset(vectors_glove, word %in% final_filter$filter_lemma)
+
+# Make final GloVE embedding ready for analysis
+# convert the first column, word, to row index.
+glove_embedding <- filtered_embedding %>%
+     remove_rownames() %>%
+     column_to_rownames(var = 'word')
+
+# convert dataframe to a matrix
+glove_embedding <- as.matrix(glove_embedding)
+str(glove_embedding)
+
+# save the glove embedding to which the filter is applied 
+saveRDS(glove_embedding, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/glove_embedding_final.RData")
+
+} else {
+  glove_embedding <- readRDS(filenam7)
+}
+```
+
+## Extract word vectors from data set with pretained word vectors and clean data frame in which these will be saved - GLoVe including bigrams.
+
+```{r}
+# check if file already exists, if not, code will be run to create the file 
+filenam8 <- "glove_embedding_bigrams.RData"
+if(!file.exists(filenam8)){
+  
+# load data frame with column with selection of words to include in analysis (bigrams included)
+df_bigrams_glove <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/bigrams_filter_glove.RData")
+
+# create df in which only the words that we want to be included are kept (i.e., extract word vectors for terms in bigrams filter data frame from the glove data set)
+glove_emb_bigrams <- subset(vectors_glove, word %in% df_bigrams_glove$filter_bigrams_glove)
+
+# convert the first column, word, to row index.
+glove_bigrams_embedding <- glove_emb_bigrams %>%
+     remove_rownames() %>%
+     column_to_rownames(var = 'word')
+
+# convert dataframe to a matrix
+glove_bigrams_embedding <- as.matrix(glove_embedding_bigrams)
+str(glove_embedding_bigrams)
+
+saveRDS(glove_bigrams_embedding, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/glove_embedding_bigrams.RData")
+
+} else {
+  glove_bigrams_embedding <- readRDS(filenam8)
+}
+```
+
+## Extract word vectors from data set with pretained word vectors and clean data frame in which these will be saved - Word2Vec.
+
+Note that the existing pre-trained word vectors from the Word2Vec dataset are extracted in a Python file and the code below only loads the resulted dataframe, cleans the dataframe an saves the dataframe as a .RData object.
+
+Therefore it is important that the following file, pretrained_w2v_filtered.csv is in the same repository/folder as this final_script.Rmd file. To create the .csv file you will need to run the following Python script: create_w2v_embedding.py. 
+
+```{r}
+# check if file already exists, if not, code will be run to create the file 
+filenam9 <- "w2v_embedding_final.RData"
+if(!file.exists(filenam9)){
+
+# load the data frame with the extracted pre-trained word2vec vectors which has been created in the Python file: create_w2v_embedding.py
 wrd2vec_embedding <- read.csv("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/pretrained_w2v_filtered.csv", header = FALSE)
 
 # adjust the first column name to word
@@ -302,7 +384,7 @@ colnames(wrd2vec_embedding)[1] <- "word"
 # check structure of dataframe
 str(wrd2vec_embedding)
 
-# remove certain characters from the column V2 which now is column of the type character and contains a string as value. 
+# remove certain characters from the column V2 which now is a column of the type character and contains a string as value. 
 library(tidyverse)
 # create new data frame that can be used for applying adjustments
 df_w2vemb <- wrd2vec_embedding
@@ -337,13 +419,12 @@ df_w2vemb[1,]
 # First column is named word and the other columns dim1-40
 colnames(df_w2vemb) <- c("word", paste0("dim", 1:300))
 
-# save the embedding 
 # convert the first column, word, to row index.
 w2v_embedding <- df_w2vemb %>%
      remove_rownames() %>%
      column_to_rownames(var = 'word')
 
-# convert dataframe to a matrix
+# convert data frame to a matrix
 w2v_embedding <- as.matrix(w2v_embedding)
 str(w2v_embedding)
 
@@ -351,17 +432,22 @@ str(w2v_embedding)
 saveRDS(w2v_embedding, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/w2v_embedding_final.RData")
 
 } else {
-  w2v_embedding <- readRDS(filenam7)
+  w2v_embedding <- readRDS(filenam9)
 }
 
 ```
 
-clean and save file with w2v word vector embeddings in which the bigrams are included. 
-```{r}
-filenam8 <- "w2v_bigrams_embedding.RData"
-if(!file.exists(filenam8)){
+## Extract word vectors from data set with pretained word vectors and clean data frame in which these will be saved - Word2Vec including bigrams.
 
-# load pretrained word2vec with bigrams included which has been created in the Python file: create_w2v_emb_bigrams.py
+Note that the existing pre-trained word vectors from the Word2Vec dataset are extracted in a Python file and the code below only loads the resulted dataframe, cleans the dataframe an saves the dataframe as a .RData object.
+
+Therefore it is important that the following file, pretrained_w2v_filtered.csv is in the same repository/folder as this final_script.Rmd file. To create the .csv file you will need to run the following Python script: create_w2v_embedding.py. 
+```{r}
+# check if file already exists, if not, code will be run to create the file 
+filenam10 <- "w2v_bigrams_embedding.RData"
+if(!file.exists(filenam10)){
+
+# load the data frame with the extracted pre-trained word2vec vectors which includes bigrams and has been created in the Python file: create_w2v_emb_bigrams.py
 w2v_embedding_bigram <- read.csv("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/try_outs/pretrained_w2v_filtered_bigrams.csv", header = FALSE)
 
 # adjust the first column name to word
@@ -370,7 +456,7 @@ colnames(w2v_embedding_bigram)[1] <- "word"
 # check structure of dataframe
 str(w2v_embedding_bigram)
 
-# remove certain characters from the column V2 which now is column of the type character and contains a string as value. 
+# remove certain characters from the column V2, which now is column of the type character and contains a string as value. 
 # create new data frame that can be used for applying adjustments
 df_bigrams <- w2v_embedding_bigram
 
@@ -403,7 +489,6 @@ df_bigrams[1,]
 # First column is named word and the other columns dim1-40
 colnames(df_bigrams) <- c("word", paste0("dim", 1:300))
 
-# save the embedding 
 # convert the first column, word, to row index.
 w2v_bigrams_embedding <- df_bigrams %>%
      remove_rownames() %>%
@@ -417,79 +502,24 @@ str(w2v_bigrams_embedding)
 saveRDS(w2v_bigrams_embedding, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/w2v_bigrams_embedding.RData")
 
 } else {
-  w2v_bigrams_embedding <- readRDS(filenam8)
-}
-```
-
-## RUN ONCE ##
-apply final filter on glove embedding and save. 
-```{r}
-filenam9 <- "glove_embedding_final.RData"
-if(!file.exists(filenam9)){
-
-# load glove vectors into R
-vectors_glove <- data.table::fread('glove.840B.300d.txt', data.table = F,  encoding = 'UTF-8', quote="") 
-
-# rename the columns
-colnames(vectors_glove) <- c('word',paste('dim',1:300,sep = '_'))
-
-# create df in which only the words that we want to be included are kept
-filtered_embedding <- subset(vectors_glove, word %in% final_filter$filter_lemma)
-
-# Make final GloVE embedding ready for analysis
-# convert the first column, word, to row index.
-glove_embedding <- filtered_embedding %>%
-     remove_rownames() %>%
-     column_to_rownames(var = 'word')
-
-# convert dataframe to a matrix
-glove_embedding <- as.matrix(glove_embedding)
-str(glove_embedding)
-
-# save the glove embedding to which the filter is applied so this can be easily loaded into other scripts
-saveRDS(glove_embedding, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/glove_embedding_final.RData")
-
-} else {
-  glove_embedding <- readRDS(filenam9)
-}
-```
-
-Apply bigrams filter on glove embedding and save the embedding. 
-```{r}
-filenam10 <- "glove_embedding_bigrams.RData"
-if(!file.exists(filenam10)){
-# CREATE GLOVE EMBEDDING WITH BIGRAMS
-# load data frame with column with selection of words to include in analysis. 
-df_bigrams_glove <- readRDS("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/bigrams_filter_glove.RData")
-
-# create df in which only the words that we want to be included are kept
-glove_emb_bigrams <- subset(vectors_glove, word %in% df_bigrams_glove$filter_bigrams_glove)
-
-# transform so that it can be saved
-glove_bigrams_embedding <- glove_emb_bigrams %>%
-     remove_rownames() %>%
-     column_to_rownames(var = 'word')
-
-# convert dataframe to a matrix
-glove_bigrams_embedding <- as.matrix(glove_embedding_bigrams)
-str(glove_embedding_bigrams)
-
-saveRDS(glove_bigrams_embedding, "/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/glove_embedding_bigrams.RData")
-} else {
-  glove_bigrams_embedding <- readRDS(filenam10)
+  w2v_bigrams_embedding <- readRDS(filenam10)
 }
 ```
 
 
-# Check for each embedding which words are lost 
-Note that filters, final_filter, bigrams_filter and df_bigrams_glove need to be loaded in the pieces of code above before we can run the code below. 
+## Investigate for which terms no word vectors could be extracted from the GloVe and/or Word2Vec data sets. 
+Inevitability, there were some terms in the corpus that did not exist in the GloVe and/or Word2Vec datasets. In the block of code below it is explored how many and which terms were last when extracting word vectors from the different datasets (GloVe and Word2Vec) with existing pre-trained vectors. 
+
 ```{r}
 # first rename the filters so that they are in line with the code below.
+# filter that contains only unigrams and has been used for the extraction of word vectors from both the glove and word2vec data sets. 
 final_filter <- filter_lemma
+# filter that next to unigrams, contains bigrams, separated by a _, and has been used for the extraction of word vectors from the word2vec data set. 
 bigrams_filter <- filter_bigrams
+# filter that next to unigrams, contains bigrams, separated by a -, and has been used for the extraction of word vectors from the glove data set. 
 df_bigrams_glove <- filter_bigrams_glove
 
-# GLOVE EMBEDDING 
+# GloVe - unigrams 
 # check number of unique words
 length(unique((rownames(glove_embedding))))
 # 11,562 unique words
@@ -502,7 +532,7 @@ length(unique(rownames(glove_embedding))) + length(unique((lost_glove$filter_lem
 # -> 13,747. Which is equal to the line of code below. 
 length(unique((final_filter$filter_lemma)))
 
-# GLOVE EMBEDDING INCLUDING BIGRAMS
+# GloVe - unigrams and bigrams
 # check number of unique words
 length(unique((rownames(glove_bigrams_embedding))))
 # 11,943 unique words
@@ -515,7 +545,7 @@ length(unique(rownames(glove_bigrams_embedding))) + length(unique((lost_glove_bi
 # -> 29,118. Which is equal to the line of code below. 
 length(unique((bigrams_filter$filter_bigrams)))
 
-# WORD2VEC EMBEDDING
+# Word2Vec - unigrams
 # check number of unique words
 length(unique((rownames(w2v_embedding))))
 # 10,077 unique words
@@ -528,7 +558,7 @@ length(unique(rownames(w2v_embedding))) + length(unique((lost_w2v$filter_lemma))
 # -> 13,747. Which is equal to the line of code below. 
 length(unique((final_filter$filter_lemma)))
 
-# WORD2VEC EMBEDDING INCLUDING BIGRAMS
+# # Word2Vec - unigrams and bigrams
 # check number of unique words
 length(unique((rownames(w2v_bigrams_embedding))))
 # 10,297 unique words
@@ -540,11 +570,8 @@ lost_w2v_bigrams <- subset(bigrams_filter, !(filter_bigrams %in% rownames(w2v_bi
 length(unique(rownames(w2v_bigrams_embedding))) + length(unique((lost_w2v_bigrams$filter_bigrams)))
 # -> 29,118. Which is equal to the line of code below. 
 length(unique((bigrams_filter$filter_bigrams)))
-```
 
-# Comparison of the different embeddings 
-```{r}
-# COMPARE GLOVE AND GLOVE BIGRAMS
+# Comparing the two matrices with extracted GloVe word vectors - unigrams vs. unigrams and bigrams
 diff_glove <- subset(glove_bigrams_embedding, !(rownames(glove_bigrams_embedding) %in% rownames(glove_embedding)))
 # -> if we look at the rownames this matrix we see that difference between the two matrices are indeed all bigrams. This is to be expected. 
 
@@ -552,7 +579,7 @@ diff_glove <- subset(glove_bigrams_embedding, !(rownames(glove_bigrams_embedding
 length(unique(rownames(diff_glove)))
 length(unique(rownames(glove_bigrams_embedding))) - length(unique(rownames(glove_embedding))) 
 
-# COMPARE W2V AND W2V BIGRAMS
+# Comparing the two matrices with extracted Word2Vec word vectors - unigrams vs. unigrams and bigrams
 diff_w2v <- subset(w2v_bigrams_embedding, !(rownames(w2v_bigrams_embedding) %in% rownames(w2v_embedding)))
 # -> if we look at the rownames this matrix we see that difference between the two matrices are indeed all bigrams. This is to be expected. 
 # check words that are in the glove embedding that are also in the w2v embedding
@@ -561,7 +588,7 @@ diff_w2v <- subset(w2v_bigrams_embedding, !(rownames(w2v_bigrams_embedding) %in%
 length(unique(rownames(diff_w2v)))
 length(unique(rownames(w2v_bigrams_embedding))) - length(unique(rownames(w2v_embedding))) 
 
-# COMPARE GLOVE AND W2V
+# Comparing the matrices with word vectors extracted from Glove vs. extracted from Word2vec - unigrams 
 # check words that are in the glove embedding that are also in the w2v embedding
 words_same <- subset(glove_embedding, rownames(glove_embedding) %in% rownames(w2v_embedding))
 
@@ -581,8 +608,8 @@ words_diff_w2v <- subset(w2v_embedding, !(rownames(w2v_embedding) %in% rownames(
 
 length(unique(rownames(w2v_embedding))) + length(unique(rownames(words_diff))) -  length(unique(rownames(words_diff_w2v))) == length(unique(rownames(glove_embedding)))
 
-# COMPARE GLOVE BIGRAMS AND W2V BIGRAMS
-# note that I will use diff_glove and diff_w2v here because the diff represent the bigrams that are included extracted from both different datasets, glove and w2v. 
+# Comparing the matrices with word vectors extracted from Glove vs. extracted from Word2vec - bigrams 
+# note that diff_glove and diff_w2v are used here because the diff represent the bigrams that are included extracted from both different datasets, glove and w2v. 
 # because the bigrams are split differently in the two dataset we first have to apply some data manipulations 
 diff_glove_bigram_comp <- as.data.frame(diff_glove)
 diff_glove_bigram_comp$word <- rownames(diff_glove_bigram_comp)
@@ -594,10 +621,10 @@ diff_glove_bigram_comp$w2v_style <- gsub('-', '_', diff_glove_bigram_comp$word)
 # now check which bigrams are in the w2v embedding but not in the glove embedding
 bigrams_in_w2v <- subset(diff_w2v, !(rownames(diff_w2v) %in% diff_glove_bigram_comp$w2v_style))
 
-# Check which bigrams are in the glove embedding but not in the w2v embedding
+# check which bigrams are in the glove embedding but not in the w2v embedding
 bigrams_in_glove <- subset(diff_glove_bigram_comp, !(w2v_style %in% rownames(diff_w2v)))
 
-# check which, and how many, bigrams are in both embeddings 
+# check which and how many bigrams are in both embeddings 
 bigrams_both <- subset(diff_w2v, rownames(diff_w2v) %in% diff_glove_bigram_comp$w2v_style)
 length(unique(rownames(bigrams_both)))
 # -> interestingly the are only 45 bigrams that are in both embeddings. 
@@ -610,27 +637,17 @@ length(unique(rownames(diff_glove))) == length(unique(rownames(bigrams_both))) +
 ```
 
 
-##### KMEANS EINDRAPPORT (versie 2) BESTAND INVOEGEN
-
-Try out k-means clustering on the existing GloVe embedding on which the final filter is applied.
-
-```{r}
-# load libraries
-library(dplyr)
-library(cluster)
-library(ggplot2)
-library(devtools)
-library(data.table, quietly = TRUE, warn.conflicts = FALSE)
-library(factoextra)
-```
-
+## Clean file with word vectors extracted through ASReview simulation mode
+Word vectors were also obtained through running the simulation mode of ASReview while using doc2vec_grab as feature extractor. In the Python script: gensim_to_dict.py, the matrix and vocab from the genism.model that resulted from the running the simulation mode were transformed to a dictionary and saved in the dict_wordvec_sim.csv file. This .csv file should be in the repository and is used in the block of code below. 
 
 ```{r}
-# Clean and save the file with the word vectors extracted through ASReview
+# clean and save the file with the word vectors extracted through ASReview
+
+# check if file already exists, if not, code will be run to create the file
 filenam11 <- "asreview_embedding_sim_final.RData"
 if(!file.exists(filenam11)){ 
 
-# load csv that has been created in the Python file: !!! into object 
+# load csv that has been created in the Python file: gensim_to_dict.py into object 
 df_wordvecemb  <- read.csv("/Users/amyvanderham/Documents/Research_Assistant_Rgit/veni_sysrev/amy/asreview/dict_wordvec_sim.csv", header = FALSE)
 
 # adjust the first column name to word
@@ -671,21 +688,22 @@ df_wordvecemb <- df_wordvecemb %>%
 asr_embedding <- as.matrix(df_wordvecemb)
 # -> Note that on this embedding the final filter has not yet been applied.
 
-# Save data frame as .RData
+# save matrix as .RData
 saveRDS(asr_embedding, "amy/asreview_embedding_sim_final.RData")
 
 } else {
   asr_embedding <- readRDS(filenam11)
 }
 
- 
+# apply filter on the matrix with word vectors exctracted through ASReview so that only the words that we want to be included (i.e., are part of the filter data frame) are kept. 
+asr_embedding_filtered <- subset(asr_embedding,  rownames(asr_embedding)%in% final_filter$filter_lemma)
 ```
 
 ## Cosine Similarity 
 
 ```{r}
 library(text2vec)
-# create function to find similar words based on cosine distance
+# create function to find words that are close to each other based on cosine similarity. This function has been retrieved from the following tutorial page: https://blogs.rstudio.com/ai/posts/2017-12-22-word-embeddings-with-keras/ 
 find_similar_words <- function(word, embedding_matrix, n = 5) {
   similarities <- embedding_matrix[word, , drop = FALSE] %>%
     sim2(embedding_matrix, y = ., method = "cosine")
@@ -693,33 +711,30 @@ find_similar_words <- function(word, embedding_matrix, n = 5) {
   similarities[, 1] %>% sort(decreasing = TRUE) %>% head(n)
 }
 
-# Run function on the word health and see the 25 closest words based on cosine similarity. Compare the different embeddings.
+# Run function on the word white and see the 50 closest words based on cosine similarity. Compare the different embeddings.
 find_similar_words("white",glove_embedding,50)
 find_similar_words("white",w2v_embedding,50)
+find_similar_words("white",glove_bigrams_embedding,50)
 find_similar_words("white",w2v_bigrams_embedding,50)
-find_similar_words("mental_health",w2v_bigrams_embedding,50)
+find_similar_words("white",asr_embedding_filtered,50)
+
 
 # check if socio-emotional and socioemotional are similar words in the glove bigrams embedding
 find_similar_words("socio-emotional",glove_bigrams_embedding,25)
 find_similar_words("socioemotional",glove_bigrams_embedding,25)
 
-
-# before checking cosine similarity for terms their word vectors extracted through ASReview, the final filter first needs to be applied on the dataframe with the word vectors extracted through ASReview. 
-
-# create matrix in which only the words that we want to be included are kept
-asr_embedding_filtered <- subset(asr_embedding,  rownames(asr_embedding)%in% final_filter$filter_lemma)
-
-# check cosine distance of asr embedding on which filter has been applied. 
+# check words that are closely related to boy based on cosine similarity 
 find_similar_words("boy", asr_embedding_filtered,10)
 find_similar_words("emotion", asr_embedding_filtered,15)
-find_similar_words("boy", glove_embedding,15)
+find_similar_words("boy", glove_embedding,10)
 find_similar_words("boy", w2v_embedding,10)
 ```
 
-## Determining the optimal number of clusters, K
-Determining the value of the parameter K for the glove_embedding matrix. 
-Function below is retrieved from the following page: https://www.r-bloggers.com/2013/08/k-means-clustering-from-r-in-action/ 
+## Determining the optimal number of clusters, K - WSSplot (elbow plot)
+Determining the value of the parameter K for the data set with the word vectors extracted from Glove.  
+
 ```{r}
+# Function for creating a plot of the total within-groups sums of squares against the number of clusters in a K-means solution. This function has been retrieved from: https://www.r-bloggers.com/2013/08/k-means-clustering-from-r-in-action/.
 wssplot <- function(data, nc=15, seed=88){
   wss <- (nrow(data)-1)*sum(apply(data,2,var))
   for (i in 2:nc){
@@ -728,15 +743,13 @@ wssplot <- function(data, nc=15, seed=88){
   plot(1:nc, wss, type="b", xlab="Number of Clusters",
        ylab="Within groups sum of squares")}
 
+# apply function on matrix GloVe vectors and the maximum number of clusters to consider set to 150
 wssplot(glove_embedding, nc=150)
+# -> this the plot that is used in the report
 ```
 
-# set seed again
-```{r}
-set.seed(88)
-```
 
-# Using the package factoextra
+## Determining the optimal number of clusters, K - Using the package factoextra (elbow plot, silhouette width method, gap statistic)
 Examples on how to use this packages are retrieved from the following page: 
 https://statsandr.com/blog/clustering-analysis-k-means-and-hierarchical-clustering-by-hand-and-in-r/#silhouette-method
 ```{r}
@@ -744,13 +757,26 @@ https://statsandr.com/blog/clustering-analysis-k-means-and-hierarchical-clusteri
 set.seed(88)
 elbow_plot_glove <- fviz_nbclust(glove_embedding, kmeans, iter.max = 40, nstart = 25, method = "wss", k.max = 150) +
   labs(subtitle = "Elbow method") # add subtitle
-
-elbow_plot_glove +
-      scale_x_discrete(breaks = levels(elbow_plot_glove$clusters)[c(T, rep(F, 9))]) # following line should make sure that on the axis the value is shown every 10 clusters but does not seem to be working. 
+# note that this took a really long time and gave Quick Transfer messages. The elbow plot that is used in the report is the one created with the wssplot function.  
 
 # Silhouette method
-fviz_nbclust(glove_embedding, kmeans, iter.max = 30, nstart = 25, method = "silhouette", k.max = 150) +
+set.seed(88)
+fviz_nbclust(glove_embedding, kmeans, iter.max = 50, nstart = 25, method = "silhouette", k.max = 150) +
   labs(subtitle = "Silhouette method")
+# Note: it takes a really long time too run this and it gives 6 Quick Transfer warning messages. The results indicate two to be the optimal number of clusters. 
+
+set.seed(88)
+fviz_nbclust(glove_embedding, kmeans, iter.max = 45, nstart = 30, method = "silhouette", k.max = 150) +
+  labs(subtitle = "Silhouette method")
+
+
+# Silhouette plot that has been presented in the final report 
+# Note that here the nstart parameter has been set to the default value since it is not specified. 
+set.seed(88)
+fviz_nbclust(glove_embedding, kmeans, iter.max = 30,  method = "silhouette", k.max = 150) +
+  labs(subtitle = "Silhouette method")
+# is a lot quick and show the message one time
+
 
 # Takes to long so did not run this. Could turn nboot down. 
 # Gap statistic
@@ -759,6 +785,15 @@ fviz_nbclust(glove_embedding, kmeans,
   nstart = 25,
   method = "gap_stat",
   nboot = 500 # reduce it for lower computation time (but less precise results)
+  ) +
+  labs(subtitle = "Gap statistic method")
+
+# Gap statistic
+fviz_nbclust(glove_embedding, kmeans,
+  iter.max = 30,
+  nstart = 25,
+  method = "gap_stat",
+  nboot = 5 # reduce it for lower computation time (but less precise results)
 ) +
   labs(subtitle = "Gap statistic method")
 
@@ -775,25 +810,14 @@ nbclust_out <- NbClust(
 )
 # -> takes a really long time and gives converge warning. 
 nbclust_out
-
-# Gap statistic
-fviz_nbclust(glove_embedding, kmeans,
-  iter.max = 30,
-  nstart = 25,
-  method = "gap_stat",
-  nboot = 5 # reduce it for lower computation time (but less precise results)
-) +
-  labs(subtitle = "Gap statistic method")
 ```
 
-# CLUSTERING ANALYSIS
-Run kmeans with a value for k of 75, 100, 125, 150 and compare the results. For now I only did this on the glove embedding.
+## K-means clustering - Internal validation for comparing different values of k 
+Apply k-means on the words vectors (extracted from the GloVe data set) of the terms with a value for k of 75, 100, 125, 150 and compare the results through the use of internal validation measures. The following internal validation measures are being used: Calinski-Harabasz, Davies Bouldin, S_Dbw. Since I had some issues with reproducibility before I have decide to run set.seed every time before I call a function. 
 ```{r}
-
 # fit the k-means clustering with 75 clusters, glove
 set.seed(88)
 kmeans_fit75 <- kmeans(glove_embedding, 75, iter.max = 30, nstart = 25)
-
 
 # fit the k-means clustering with 100 clusters
 set.seed(88)
@@ -803,14 +827,29 @@ kmeans_fit100 <- kmeans(glove_embedding, 100, iter.max = 30, nstart = 25)
 set.seed(88)
 kmeans_fit125 <- kmeans(glove_embedding, 125, iter.max = 30, nstart = 25)
 
-
 # fit the k-means clustering with 150 clusters
 set.seed(88)
 kmeans_fit150 <- kmeans(glove_embedding, 150, iter.max = 30, nstart = 25)
+
+# Internal validation 
+# load library that contains function for internal validation measures
+library(clusterCrit)
+
+# check internal validation measures for k-means cluster result with a value of 75 for k 
+int_idx_75 <- intCriteria(glove_embedding, kmeans_fit75$cluster, c("Calinski_Harabasz", "Davies_Bouldin", "S_Dbw"))
+
+# check internal validation measures for k-means cluster result with a value of 100 for k 
+int_idx_100 <- intCriteria(glove_embedding, kmeans_fit100$cluster, c("Calinski_Harabasz", "Davies_Bouldin", "S_Dbw"))
+
+# check internal validation measures for k-means cluster result with a value of 125 for k 
+int_idx_125 <- intCriteria(glove_embedding, kmeans_fit125$cluster, c("Calinski_Harabasz", "Davies_Bouldin", "S_Dbw"))
+
+# check internal validation measures for k-means cluster result with a value of 150 for k 
+int_idx_150 <- intCriteria(glove_embedding, kmeans_fit150$cluster, c("Calinski_Harabasz", "Davies_Bouldin", "S_Dbw"))
 ```
 
-# RESULTS
-Look at the fit of runnig kmeans on the glove embedding with k = 125 and compare these result with running kmeans on the word2vec embedding including bigrams with k = 125 . 
+## K-means clustering - Results (k = 125)
+Looking at the results of applying the k-means algorithm on the word vectors extracted from GloVe with k = 125 and compare these result with running the k-means algorithm on the word vectors extracted from Word2Vec, bigrams included, with k = 125. 
 ```{r}
 # results 
 kmeans_fit125
@@ -822,19 +861,19 @@ kmeans_fit125$centers
 kmeans_fit125$size
 min(kmeans_fit125$size)
 max(kmeans_fit125$size)
-# -> do not see a cluster with extremely low number of observations. Minimum is 36 and max is 289
+# -> do not see a cluster with extremely low number of observations. Minimum is 31 and max is 210 
 
-# The cost function in kmeans is the total sum of the squares
+# The cost function in k means is the total sum of the squares
 kmeans_fit125$totss
 
 # silhouette width
 sil <- silhouette(kmeans_fit125$cluster, dist(glove_embedding))
 fviz_silhouette(sil)
-# -> the average silhouette width is low and there are quite some negative values. 
-# lowsil: cluster 7, -.05, cluster 124, -04, cluster 87, -0.07. 
-# highsil: cluster 123, 0.11, cluster 47, 0,13
+# -> the average silhouette width is low and there are quite some negative values. When an observation has a low silhouette width value it means that it is poorly clustered and an assignment to some other cluster would probably improve the overall results. So when a cluster has a low average silhouette average it means that it contains observations that do belong well to that cluster.
+# low silhouette average: cluster 7: -.05, cluster 87: -0.07, cluster 124: -04 
+# high silhouette average: cluster 47: 0.13, cluster 123, 0.11,
 
-# CHECK CLUSTERS
+## Check which words are clustered together
 # Create data frame in which the cluster assignment is merged back to rows/word. 
 words_with_cluster125 <- as.data.frame(cbind(row.names(glove_embedding), kmeans_fit125$cluster))
 # add column names
@@ -843,13 +882,13 @@ names(words_with_cluster125) <- c("word", "kmeans125")
 # Check cluster with highest silhouette average
 cluster125_hghsil <- subset(words_with_cluster125, subset=kmeans125 == 47)
 
-# Check smallest cluster 
+# Check cluster with the smallest size 
 cluster125_97 <- subset(words_with_cluster125, subset=kmeans125 == 97)
 
-# Mother
-# find out in which cluster the word mother is assigned
+# find out to which cluster the word mother is assigned
 words_with_cluster125[words_with_cluster125$word == "mother", ]
 
+# create separate data frame containing all terms that belong to one specific cluster
 cluster125_80 <- subset(words_with_cluster125, subset=kmeans125 == 80)
 
 # find out in which cluster the word ethnic is assigned
@@ -867,8 +906,6 @@ words_with_cluster125[words_with_cluster125$word == "yoga", ]
 
 cluster125_28 <- subset(words_with_cluster125, subset=kmeans125 == 28)
 
-cluster125_21 <- subset(words_with_cluster125, subset=kmeans125 == 21)
-
 # check a cluster with a low average silhouette width
 cluster125_lowsil <- subset(words_with_cluster125, subset=kmeans125 == 27)
 
@@ -876,46 +913,48 @@ cluster125_lowsil <- subset(words_with_cluster125, subset=kmeans125 == 27)
 cluster125_lowsil2 <- subset(words_with_cluster125, subset=kmeans125 == 124)
 # contains un and non words. 
 
+## COMMENT TOEVOEGEN
+cluster125_21 <- subset(words_with_cluster125, subset=kmeans125 == 21)
 
-# CLUSTER ANALYSIS WITHIN CLUSTER 
-# create new subset data frame
+## Cluster analysis within cluster 
+# create a matrix that only contains the terms and their associated word vectors that belong to one cluster (cluster 21)
 embedding_cluster21 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_21$word)
 
-# fit k-means
+# apply k-means on this subset with k = 3 
 set.seed(88)
 kmeans_fit3_cluster21 <- kmeans(embedding_cluster21, 3, iter.max = 30, nstart = 25)
+# -> Note that 3 as the value for k was decided on rather randomly. Ideally you would want to apply the same steps that were done before (elbow method, silhouette method and gap statistic etc.) on this subset to determine the optimal value of k. 
 
-# look at the results
-# Create data frame in which the merge cluster assignment back to rows/word. 
+# look at the resulting cluster assignments
+# create data frame in which the merge cluster assignment back to rows/word. 
 words_with_cluster21_3 <- as.data.frame(cbind(row.names(embedding_cluster21), kmeans_fit3_cluster21$cluster))
 # add column names
 names(words_with_cluster21_3) <- c("word", "kmeans3")
 
-# make a df for the 3 cluster results
+# make data frames of the 3 resulting clusters to check which terms are assigned to which cluster
 cluster21_1 <- subset(words_with_cluster21_3, subset=kmeans3 == 1)
 cluster21_2 <- subset(words_with_cluster21_3, subset=kmeans3 == 2)
 cluster21_3 <- subset(words_with_cluster21_3, subset=kmeans3 == 3)
 
-# set max overlap to Inf to show all the labels in the plot. This does however make the plot unreadable
-#options(ggrepel.max.overlaps = Inf)
-
 # visualize the k-means (with k = 3) clusters
+set.seed(88)
 fviz_cluster(kmeans_fit3_cluster21, data = embedding_cluster21,
-palette = c("#2E9FDF", "#00AFBB", "#E7B800", "#FC4E07"),
+palette = c("#E7B800", "#2E9FDF", "#00AFBB"),
 ellipse.type = "euclid", # Concentration ellipse
 star.plot = TRUE, # Add segments from centroids to items
 repel = TRUE, # Avoid label overplotting (slow)
 ggtheme = theme_minimal()
 )
+# set max overlap to Inf to show all the labels in the plot. 
+#options(ggrepel.max.overlaps = Inf)
+# -> makes the plot unreadable
 
-# CLUSTER ANALYSIS W2V BIGRAMS
+# K-means clustering - Word2Vec including bigrams (k = 125)
+# fit the k-means clustering with 125 clusters on the data frame with word vectors extracted from word2vec and including bigram terms.
 set.seed(88)
-# NOTE apparently forgot to run earlier on so the cluster assignments are not in line with the code below. -> should work now have adjusted code based on running this after running set.seed() above.  
-
-# fit the k-means clustering with 125 clusters on w2v bigrams embedding.
 kmeans_fit125_w2v <- kmeans(w2v_bigrams_embedding, 125, iter.max = 30, nstart = 25)
 
-# Create data frame in which the cluster assignment is merged back to rows/word. 
+# create data frame in which the cluster assignment is merged back to rows/word. 
 words_with_cluster125_w2v <- as.data.frame(cbind(row.names(w2v_bigrams_embedding), kmeans_fit125_w2v$cluster))
 # add column names
 names(words_with_cluster125_w2v) <- c("word", "kmeans125")
@@ -934,235 +973,256 @@ cluster125_w2v_25 <- subset(words_with_cluster125_w2v, subset=kmeans125 == 25)
 words_with_cluster125_w2v[words_with_cluster125_w2v$word == "family", ]
 
 cluster125_w2v_113 <- subset(words_with_cluster125_w2v, subset=kmeans125 == 113)
-
 ```
 
-
-# VISUALIZE THE RESULTS
+## K-means clustering - Vizualizing the clusters 
+To easily present the cluster assignment in the report, the clusters are visualized separately through the means of t-SNE. More information on visualizing high dimensional data using t-SNE can be found in the following paper: https://www.jmlr.org/papers/volume9/vandermaaten08a/vandermaaten08a.pdf. How the create the plot from the t-SNE results object has been retrieved and adapted from the following tutorial: https://www.r-bloggers.com/2019/03/sentiment-analysis-word-embedding-and-topic-modeling-on-venom-reviews/.  
 ```{r}
-# TSNE VISUALIZATION OF CLUSTER 97 (SMALLEST CLUSTER)
+# load the library that contains the Rtsne function 
 library(Rtsne)
 
-# create plot of separate cluster with tsne
+# t-SNE visualization of cluster 97 (smallest cluster ) - GloVe (k = 125)
+# create subset of terms and their associated word vectors that belong to cluster 97
 embedding_cluster97 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_97$word)
 
+# apply t-sne 
+set.seed(88)
 tsne_clst97 <- Rtsne(embedding_cluster97, dims = 2, perplexity = 10, verbose=TRUE, max_iter = 500, pca = TRUE)
 
-# create df that can be used for making the plot. 
-embedding_cluster97_plot <- as.data.frame(embedding_cluster97)
+# Function for creating plots of separate clusters
+# name function and arguments 
+plot_cluster_tsne <-function(tsne_clst, embedding_cluster, clst_number){
+  
+# create data frame of matrix that can be used for making the plot
+cluster_embedding_plot <- as.data.frame(embedding_cluster)
+# create a column with the terms
+cluster_embedding_plot$word <- rownames(cluster_embedding_plot)
 
-embedding_cluster97_plot$word <- rownames(embedding_cluster97_plot)
-
-# create plot
-#colors = rainbow(length(unique(embedding_cluster91_plot$word)))
-#names(colors) = unique(embedding_cluster91_plot$word)
-
-plot_df <- data.frame(tsne_clst97 $Y) %>%
+# create a data frame that will be used for the plot
+  plot_df <- data.frame(tsne_clst$Y) %>%
   mutate(
-    word = embedding_cluster97_plot$word,
+    word = cluster_embedding_plot$word,
   ) 
+
+# create the plot  
 p <- ggplot(plot_df, aes(X1, X2)) +
   geom_text(aes(X1, X2, label = word), size = 3) +
   xlab("") + ylab("") +
-  ggtitle("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster 97") +
+  ggtitle(paste0("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster ", clst_number)) +
   theme(legend.position = "none") +
   theme_minimal()
-p
 
-# TSNE VISUALIZATION OF CLUSTER 80 (family related cluster)
-# create plot of separate cluster with tsne
+return(p)
+}
+
+# call function to create plot
+plot_cluster_tsne(tsne_clst97, embedding_cluster97, clst_number = 97)
+
+# t-SNE visualization of cluster 80 (family related) - GloVe (k = 125)
+# create subset of terms and their associated word vectors that belong to cluster 80
 embedding_cluster80 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_80$word)
 
+# apply t-sne
 set.seed(88)
 tsne_clst80 <- Rtsne(embedding_cluster80, dims = 2, perplexity = 25, verbose=TRUE, max_iter = 500, pca = TRUE)
 
-# create df that can be used for making the plot. 
-embedding_cluster80_plot <- as.data.frame(embedding_cluster80)
+# call function to create plot
+plot_cluster_tsne(tsne_clst80, embedding_cluster80, 80)
 
-embedding_cluster80_plot$word <- rownames(embedding_cluster80_plot)
 
-# create plot
-#colors = rainbow(length(unique(embedding_cluster91_plot$word)))
-#names(colors) = unique(embedding_cluster91_plot$word)
-
-plot_df <- data.frame(tsne_clst80 $Y) %>%
-  mutate(
-    word = embedding_cluster80_plot$word,
-  ) 
-p <- ggplot(plot_df, aes(X1, X2)) +
-  geom_text(aes(X1, X2, label = word), size = 3) +
-  xlab("") + ylab("") +
-  ggtitle("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster 80") +
-  theme(legend.position = "none") +
-  theme_minimal()
-p
-
-# TSNE VISUALIZATION OF CLUSTER 75 (ethnicity related cluster)
-# create plot of separate cluster with tsne
+# t-SNE visualization of cluster 75 (ethnicity related) - GloVe (k = 125)
+# create subset of terms and their associated word vectors that belong to cluster 75
 embedding_cluster75 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_75$word)
 
+# apply t-sne
+set.seed(88)
 tsne_clst75 <- Rtsne(embedding_cluster75, dims = 2, perplexity = 20, verbose=TRUE, max_iter = 500, pca = TRUE)
 
-# create df that can be used for making the plot. 
-embedding_cluster75_plot <- as.data.frame(embedding_cluster75)
+# call function to create plot
+plot_cluster_tsne(tsne_clst75, embedding_cluster75, 75)
 
-embedding_cluster75_plot$word <- rownames(embedding_cluster75_plot)
-
-# create plot
-#colors = rainbow(length(unique(embedding_cluster91_plot$word)))
-#names(colors) = unique(embedding_cluster91_plot$word)
-
-plot_df <- data.frame(tsne_clst75 $Y) %>%
-  mutate(
-    word = embedding_cluster75_plot$word,
-  ) 
-p <- ggplot(plot_df, aes(X1, X2)) +
-  geom_text(aes(X1, X2, label = word), size = 3) +
-  xlab("") + ylab("") +
-  ggtitle("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster 75") +
-  theme(legend.position = "none") +
-  theme_minimal() + 
-  xlim(-15, 15)
-p
-
-# TSNE VISUALIZATION OF CLUSTER 17 (academic related cluster)
-# create plot of separate cluster with tsne
+# t-SNE visualization of cluster 17 (academic related) - GloVe (k = 125)
+# create subset of terms and their associated word vectors that belong to cluster 17
 embedding_cluster17 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_17$word)
 
+# apply t-sne
+set.seed(88)
 tsne_clst17 <- Rtsne(embedding_cluster17, dims = 2, perplexity = 25, verbose=TRUE, max_iter = 500, pca = TRUE)
 
-# create df that can be used for making the plot. 
-embedding_cluster17_plot <- as.data.frame(embedding_cluster17)
+# call function to create plot
+plot_cluster_tsne(tsne_clst17, embedding_cluster17, 17)
 
-embedding_cluster17_plot$word <- rownames(embedding_cluster17_plot)
-
-# create plot
-#colors = rainbow(length(unique(embedding_cluster91_plot$word)))
-#names(colors) = unique(embedding_cluster91_plot$word)
-
-plot_df <- data.frame(tsne_clst17 $Y) %>%
-  mutate(
-    word = embedding_cluster17_plot$word,
-  ) 
-p <- ggplot(plot_df, aes(X1, X2)) +
-  geom_text(aes(X1, X2, label = word), size = 3) +
-  xlab("") + ylab("") +
-  ggtitle("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster 17") +
-  theme(legend.position = "none") +
-  theme_minimal() +   
-  xlim(-8, 8)
-p
-
-
-# TSNE VISUALIZATION OF CLUSTER low silhouette average (cluster 124 with non, un, post, pre)
-# create plot of separate cluster with tsne
+# t-SNE visualization of cluster 124 (low silhouette average and terms with non, un, post, pre) - GloVe (k = 125)
+# create subset of terms and their associated word vectors that belong to cluster 124
 embedding_cluster124 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_lowsil2$word)
 
+# apply t-sne
+set.seed(88)
 tsne_clst124 <- Rtsne(embedding_cluster124, dims = 2, perplexity = 20, verbose=TRUE, max_iter = 500, pca = TRUE)
 
-# create df that can be used for making the plot. 
-embedding_cluster124_plot <- as.data.frame(embedding_cluster124)
+# call function to create plot
+plot_cluster_tsne(tsne_clst124, embedding_cluster124, 124)
 
-embedding_cluster124_plot$word <- rownames(embedding_cluster124_plot)
-
-# create plot
-#colors = rainbow(length(unique(embedding_cluster91_plot$word)))
-#names(colors) = unique(embedding_cluster91_plot$word)
-
-plot_df <- data.frame(tsne_clst124 $Y) %>%
-  mutate(
-    word = embedding_cluster124_plot$word,
-  ) 
-p <- ggplot(plot_df, aes(X1, X2)) +
-  geom_text(aes(X1, X2, label = word), size = 3) +
-  xlab("") + ylab("") +
-  ggtitle("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster 124") +
-  theme(legend.position = "none") +
-  theme_minimal() +
-    xlim(-13, 12)
-p
-
-
-## VISUALIZATION OF PLOTS FROM CLUSTERING WIHT W2V EMBEDDINGS ##
-# TSNE VISUALIZATION OF CLUSTER 112 (emotional_dysregulation cluster)
-# create plot of separate cluster with tsne
+# t-SNE visualization of cluster 59 (emotional_dysregulation) - Word2Vec including bigrams (k = 125)
+# create subset of terms and their associated word vectors that belong to cluster 59
 embedding_cluster59_w2v <- subset(w2v_bigrams_embedding, rownames(w2v_bigrams_embedding) %in% cluster125_w2v_59$word)
 
-tsne_clst_59_w2v <- Rtsne(embedding_cluster59_w2v, dims = 2, perplexity = 95, verbose=TRUE, max_iter = 500, pca = TRUE)
+# apply t-sne
+set.seed(88)
+tsne_clst_59_w2v <- Rtsne(embedding_cluster59_w2v, dims = 2, perplexity = 50, verbose=TRUE, max_iter = 500, pca = TRUE)
 
-# create df that can be used for making the plot. 
-embedding_cluster59_w2v_plot <- as.data.frame(embedding_cluster59_w2v)
+# call function to create plot and save in object 
+plot_clst59_w2v <- plot_cluster_tsne(tsne_clst_59_w2v, embedding_cluster59_w2v, clst_number = "59 - w2v")
 
-embedding_cluster59_w2v_plot$word <- rownames(embedding_cluster59_w2v_plot)
-
-# create plot
-#colors = rainbow(length(unique(embedding_cluster91_plot$word)))
-#names(colors) = unique(embedding_cluster91_plot$word)
-
-plot_df <- data.frame(tsne_clst_59_w2v$Y) %>%
-  mutate(
-    word = embedding_cluster59_w2v_plot$word,
-  ) 
-p <- ggplot(plot_df, aes(X1, X2)) +
-  geom_text(aes(X1, X2, label = word, colour = word == "emotional_dysregulation"), size = 3, show.legend = FALSE) +
-  xlab("") + ylab("") +
-  ggtitle("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster 59 - W2V") +
+# highlight the word emotional_dysregulation and adjust limits of x-axis
+plot_clst59_w2v +
+  geom_text(aes(label = word, colour = word == "emotional_dysregulation"), size = 3, show.legend = FALSE) +
   scale_colour_manual(values=c("#000000", "#ffcc00")) +
   theme(legend.position = "none") +
+  xlim(-5, 5) + 
+  theme_minimal()
   
-  theme_minimal() 
-p
-
-
-# TSNE VISUALIZATION OF CLUSTER W2V 117 (family related cluster)
-# note that for some reason the plots below do not show the bigrams. 
-# create plot of separate cluster with tsne
+# t-SNE visualization of cluster 113 (family related) - Word2Vec including bigrams (k = 125)
+# create subset of terms and their associated word vectors that belong to cluster 113   
 embedding_cluster113_w2v <- subset(w2v_bigrams_embedding, rownames(w2v_bigrams_embedding) %in% cluster125_w2v_113$word)
 
+# apply t-sne
+set.seed(88)
 tsne_clst_113_w2v <- Rtsne(embedding_cluster113_w2v, dims = 2, perplexity = 18, verbose=TRUE, max_iter = 500, pca = TRUE)
 
-# create df that can be used for making the plot. 
-embedding_cluster113_w2v_plot <- as.data.frame(embedding_cluster113_w2v)
+# call function to create plot
+plot_cluster_tsne(tsne_clst_113_w2v, embedding_cluster113_w2v, clst_number = "113 - w2v")
 
-embedding_cluster113_w2v_plot$word <- rownames(embedding_cluster113_w2v_plot)
-
-# create plot
-#colors = rainbow(length(unique(embedding_cluster91_plot$word)))
-#names(colors) = unique(embedding_cluster91_plot$word)
-
-plot_df <- data.frame(tsne_clst_113_w2v$Y) %>%
-  mutate(
-    word = embedding_cluster113_w2v_plot$word,
-  ) 
-p <- ggplot(plot_df, aes(X1, X2)) +
-  geom_text(aes(X1, X2, label = word), size = 3) +
-  xlab("") + ylab("") +
-  ggtitle("2-dimensional t-SNE Mapping of Word Vectors Belonging to Cluster 113 - W2V") +
-  theme(legend.position = "none") +
-  theme_minimal() +
-  xlim(-35, 38)
-p
+# call function to create plot
+plot_cluster_tsne(tsne_clst_113_w2v, embedding_cluster113_w2v, clst_number = "113 - w2v")
 ```
 
-
-# INTERNAL VALIDATION
-# Try some internal validation measures to evaluate the results.
+## DBSCAN 
 ```{r}
-library(clusterCrit)
-
-int_idx_75 <- intCriteria(glove_embedding, kmeans_fit75$cluster, c("Calinski_Harabasz", "Davies_Bouldin", "S_Dbw"))
-
-int_idx_100 <- intCriteria(glove_embedding, kmeans_fit100$cluster, c("Calinski_Harabasz", "Davies_Bouldin", "S_Dbw"))
-
-int_idx_125 <- intCriteria(glove_embedding, kmeans_fit125$cluster, c("Calinski_Harabasz", "Davies_Bouldin", "S_Dbw"))
-
-int_idx_150 <- intCriteria(glove_embedding, kmeans_fit150$cluster, c("Calinski_Harabasz", "Davies_Bouldin", "S_Dbw"))
-
-# NbClust can be used for determining the optimal number of clusters but this line of code takes a really long time to run. The NbClust also provides a function that also tells you which is the best clustering technique for your data but I was not able to figure out how to run and interpret that function properly.  
-library(NbClust)
-NbClust(glove_embedding, distance = "euclidean", method = "kmeans")
-
+# libraries dbscan
+library(fpc)
+library(dbscan)
 ```
+
+# set.seed 
+```{r}
+set.seed(88)
+```
+
+# Load needed datafiles
+```{r}
+# load glove word embedding file
+glove_embedding <- readRDS("glove_embedding_final.RData")
+
+# check structure
+str(glove_embedding)
+```
+
+# Try - out dbscan tutorial 
+http://www.sthda.com/english/wiki/wiki.php?id_contents=7940
+```{r}
+# Compute DBSCAN 
+db <- dbscan::dbscan(glove_embedding, 8, 5) 
+# Plot DBSCAN results
+plot(db, glove_embedding, main = "DBSCAN", frame = FALSE)
+
+# same plot using different function 
+library("factoextra")
+fviz_cluster(db, glove_embedding, stand = FALSE, frame = FALSE, geom = "point")
+
+# Print DBSCAN results 
+print(db)
+# -> gives one big cluster and 411 noise points 
+
+# determine minPts 
+library(SciViews)
+# I have found online that you should set minPts to ln(n) so that is why this is calculated below. 
+ln(11562)
+
+# determining optimal eps value
+dbscan::kNNdistplot(glove_embedding, k =  9)
+abline(h = 4.8, lty = 2)
+abline(h = 8.3, lty = 2)
+# -> based on this plot I would set eps to either 4.8 or 8.3 but not sure if I interpreted it correctly 
+
+# based on the running the codelines above try dbscan with minPts = 9 and eps = 8.3 and 4.8
+db_8.3_9 <- dbscan::dbscan(glove_embedding, 8.3, 9) 
+print(db_8.3_9)
+
+db_4.8_9 <- dbscan::dbscan(glove_embedding, 4.8, 9) 
+print(db_4.8_9)
+
+# Create data frame in which the cluster assignment is merged back to rows/word. 
+kw_with_cluster <- as.data.frame(cbind(row.names(glove_embedding), db_4.8_9$cluster))
+names(kw_with_cluster) <- c("word", "dbscan9")
+
+cluster1 <- subset(kw_with_cluster, subset=dbscan9 == 1)
+cluster2 <- subset(kw_with_cluster, subset=dbscan9 == 2)
+cluster3 <- subset(kw_with_cluster, subset=dbscan9 == 3)
+cluster4 <- subset(kw_with_cluster, subset=dbscan9 == 4)
+cluster5 <- subset(kw_with_cluster, subset=dbscan9 == 5)
+cluster6 <- subset(kw_with_cluster, subset=dbscan9 == 6)
+cluster7 <- subset(kw_with_cluster, subset=dbscan9 == 7)
+cluster8 <- subset(kw_with_cluster, subset=dbscan9 == 8)
+cluster9 <- subset(kw_with_cluster, subset=dbscan9 == 9)
+
+# I have also read somewhere that you should set minPts to 2*dim. Which in our case means 2*300 = 600. Let try what happens if we do that
+# determining optimal eps value
+dbscan::kNNdistplot(glove_embedding, k =  600)
+abline(h = 6.5, lty = 2)
+abline(h = 9.2, lty = 2)
+
+# based on the running the codelines above try dbscan with minPts = 600 and eps = 6.5
+db_6.5_600 <- dbscan::dbscan(glove_embedding, 6.5, 600) 
+print(db_6.5_600)
+# -> geeft 1 cluster en de rest als noise points. 
+
+# TRYOUTS
+# try dbscan met eps = 4 and minPts = 5
+db4 <- dbscan::dbscan(glove_embedding, 4, 5) 
+
+# Print DBSCAN results 
+print(db4)
+# gives 17 clusters but many noise points (11408)
+
+# Create data frame in which the cluster assignment is merged back to rows/word. 
+kw_with_cluster <- as.data.frame(cbind(row.names(glove_embedding), db4$cluster))
+names(kw_with_cluster) <- c("word", "dbscan4")
+
+cluster13_1 <- subset(kw_with_cluster, subset=dbscan4 == 1)
+cluster13_2 <- subset(kw_with_cluster, subset=dbscan4 == 2)
+cluster13_3 <- subset(kw_with_cluster, subset=dbscan4 == 3)
+cluster13_4 <- subset(kw_with_cluster, subset=dbscan4 == 4)
+cluster13_5 <- subset(kw_with_cluster, subset=dbscan4 == 5)
+cluster13_6 <- subset(kw_with_cluster, subset=dbscan4 == 6)
+cluster13_7 <- subset(kw_with_cluster, subset=dbscan4 == 7)
+cluster13_8 <- subset(kw_with_cluster, subset=dbscan4 == 8)
+cluster13_9 <- subset(kw_with_cluster, subset=dbscan4 == 9)
+cluster13_10 <- subset(kw_with_cluster, subset=dbscan4 == 10)
+cluster13_11 <- subset(kw_with_cluster, subset=dbscan4 == 11)
+cluster13_12 <- subset(kw_with_cluster, subset=dbscan4 == 12)
+
+cluster13_13 <- subset(kw_with_cluster, subset=dbscan4 == 13)
+
+
+# try dbscan met een andere minPts value
+db4_10 <- dbscan::dbscan(glove_embedding, 4, 10) 
+print(db4_10)
+
+# random attempt
+db_ra <- dbscan::dbscan(glove_embedding, .25, 10) 
+print(db_ra)
+# -> results in all observations being classified as noise.
+
+# try dbscan with smaller eps. : eps = 0.10
+db10_4 <- dbscan::dbscan(glove_embedding, 0.10, 4) 
+print(db10_4)
+# -> this small eps value will lead to all the point being noise
+
+# try dbscan with lager eps. : eps = 0.35
+db1.5_4 <- dbscan::dbscan(glove_embedding, 1.5, 10000) 
+print(db1.5_4)
+# -> results in all observations being classified as noise.
 
 
 
