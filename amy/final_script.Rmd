@@ -1098,30 +1098,14 @@ plot_cluster_tsne(tsne_clst_113_w2v, embedding_cluster113_w2v, clst_number = "11
 ```
 
 ## DBSCAN 
+Applying DBSCAN for clustering the terms has also been explored. Based on the steps in the following tutorial: http://www.sthda.com/english/wiki/wiki.php?id_contents=7940
 ```{r}
-# libraries dbscan
+# load libraries that are need to perform dbscan clustering 
 library(fpc)
 library(dbscan)
-```
 
-# set.seed 
-```{r}
-set.seed(88)
-```
-
-# Load needed datafiles
-```{r}
-# load glove word embedding file
-glove_embedding <- readRDS("glove_embedding_final.RData")
-
-# check structure
-str(glove_embedding)
-```
-
-# Try - out dbscan tutorial 
-http://www.sthda.com/english/wiki/wiki.php?id_contents=7940
-```{r}
 # Compute DBSCAN 
+set.seed(88)
 db <- dbscan::dbscan(glove_embedding, 8, 5) 
 # Plot DBSCAN results
 plot(db, glove_embedding, main = "DBSCAN", frame = FALSE)
