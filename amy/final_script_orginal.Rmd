@@ -695,7 +695,7 @@ saveRDS(asr_embedding, "amy/asreview_embedding_sim_final.RData")
   asr_embedding <- readRDS(filenam11)
 }
 
-# apply filter on the matrix with word vectors exctracted through ASReview so that only the words that we want to be included (i.e., are part of the filter data frame) are kept. 
+# apply filter on the matrix with word vectors extracted through ASReview so that only the words that we want to be included (i.e., are part of the filter data frame) are kept. 
 asr_embedding_filtered <- subset(asr_embedding,  rownames(asr_embedding)%in% final_filter$filter_lemma)
 ```
 
