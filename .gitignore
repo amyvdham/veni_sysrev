@@ -9,6 +9,7 @@
 !clustering100.RData
 !clustering119.RData
 !study2_df_token.Rdata
+!asreview_embedding_sim_final.Rdata
 *.h5
 bunnies.R
 *.log
