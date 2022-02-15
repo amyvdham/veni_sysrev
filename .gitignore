@@ -37,3 +37,9 @@ pretrained_w2v_filtered2.csv
 pretrained_w2v_filtered_bigrams.csv
 bigrams_filter.csv
 final_filter.csv
+glove.840B.300d_original.txt
+GoogleNews-vectors-negative300_original.bin
+pretrained_w2v_filtered_original.csv
+pretrained_w2v_filtered_bigrams_original.csv
+bigrams_filter_original.csv
+final_filter_original.csv
