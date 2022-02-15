@@ -1098,7 +1098,7 @@ plot_cluster_tsne(tsne_clst_113_w2v, embedding_cluster113_w2v, clst_number = "11
 ```
 
 ## DBSCAN 
-Applying DBSCAN for clustering the terms has also been explored. Based on the steps in the following tutorial: http://www.sthda.com/english/wiki/wiki.php?id_contents=7940
+Applying DBSCAN for clustering the terms has also been explored. Based on the steps in the following tutorial: http://www.sthda.com/english/wiki/wiki.php?id_contents=7940 the DBSCAN algorithm has been applied on the matrix that contains the word vectors extracted from the GloVe data set. Note that this is a try out and contains comments on my decisions. 
 ```{r}
 # load libraries that are need to perform dbscan clustering 
 library(fpc)
@@ -1167,7 +1167,7 @@ db4 <- dbscan::dbscan(glove_embedding, 4, 5)
 
 # Print DBSCAN results 
 print(db4)
-# gives 17 clusters but many noise points (11408)
+# gives 13 clusters but many noise points (11408)
 
 # Create data frame in which the cluster assignment is merged back to rows/word. 
 kw_with_cluster <- as.data.frame(cbind(row.names(glove_embedding), db4$cluster))
@@ -1185,7 +1185,6 @@ cluster13_9 <- subset(kw_with_cluster, subset=dbscan4 == 9)
 cluster13_10 <- subset(kw_with_cluster, subset=dbscan4 == 10)
 cluster13_11 <- subset(kw_with_cluster, subset=dbscan4 == 11)
 cluster13_12 <- subset(kw_with_cluster, subset=dbscan4 == 12)
-
 cluster13_13 <- subset(kw_with_cluster, subset=dbscan4 == 13)
 
 
