@@ -15,15 +15,18 @@ To be able to run these Python scripts the csv files `final_filter.csv` and `big
 
 ## Overview Files 
 File                                | Description                                                                   | Access      
--------------------------           | --------------------------                                                    | --------------
-asreview_embedding_sim_final.RData  |                                                                               | Repository
-bigrams_filter_glove.RData          | Project file                                                                  | Run final_script.Rmd
+-------------------------           | --------------------------------------------                                  | --------------
+asreview_embedding_sim_final.RData  | Matrix with word vectors obtain by running the simulation mode in ASReview    | Repository
+bigrams_filter_glove.RData          | Dataframe containing the terms  (including bigrams separate with a -)         |Run final_script.Rmd
+                                    | we want to include in the analysis                                            | 
 bigrams_filter.csv                  | WORCS metadata YAML                                                           | Run final_script.Rmd
 bigrams_filter.RData                | WORCS metadata YAML                                                           | Run final_script.Rmd
 create_w2v_emb_bigrams.py           | Extract Word2vec word vectors                                                 | Repository
 create_w2v_embedding.py             | Extract Word2vec word vectors                                                 | Repository
 data_study2.RData                   | WORCS metadata YAML                                                           | Run final_script.Rmd
+dict_wordvec_sim.csv                | Project file                                                                  | Run gensim_to_dict.py (not working)
 english-ewt-ud-2.5-191206.udpipe    |                                                                               | Repository
+feature_extraction.py               | Show how to apply feature extraction without the simulation mode in ASReview  | Repository 
 final_filter.csv                    | WORCS metadata YAML                                                           | Run final_script.Rmd 
 final_filter.Rdata                  | WORCS metadata YAML                                                           | Run final_script.Rmd
 final_script.Rmd                    | Main script of this project                                                   | Repository
@@ -39,10 +42,6 @@ README.md                           | Description of project                    
 study2_df_lemma.RData               | Preregistered hypotheses                                                      | Run final_script.Rmd
 w2v_bigrams_embedding.RData         | Reproducible R environment                                                    | Run final_script.Rmd
 w2v_embedding_final.RData           | Preregistered hypotheses                                                      | Run final_script.Rmd
-
-
-dict_wordvec_sim.csv                | Project file                                                                  | Run gensim_to_dict.py (not working)
-feature_extraction.py               | Show how to apply feature extraction without the simulation mode in ASReview  | Repository 
 
 ## Issue with reproducibility of one file 
 Note that the file `asreview_embedding_sim_final.Rdata` cannot be reproduced and should there for be used directly. 
