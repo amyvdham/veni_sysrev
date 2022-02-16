@@ -14,34 +14,33 @@ Thirdly, there are two python scripts, `create_w2v_embedding.py` and `create_w2v
 To be able to run these Python scripts the csv files `final_filter.csv` and `bigrams_filter.csv` first need to be created by running the associated code in the `final_script.Rmd` file. This code can be found in the block underneed the heading *“Save dataframe which only includes the filter column - final filter”* and *“Save dataframe which only includes the filter column - bigrams filter (Word2Vec)”*.
 
 ## Overview Files 
-File                                | Description                                                                   | Access      
--------------------------           | --------------------------------------------                                  | --------------
-asreview_embedding_sim_final.RData  | Matrix with word vectors obtain by running the simulation mode in ASReview    | Repository
-bigrams_filter_glove.RData          | Dataframe containing the terms  (including bigrams separate with a -)         |Run final_script.Rmd
-                                    | we want to include in the analysis                                            | 
-bigrams_filter.csv                  | WORCS metadata YAML                                                           | Run final_script.Rmd
-bigrams_filter.RData                | WORCS metadata YAML                                                           | Run final_script.Rmd
-create_w2v_emb_bigrams.py           | Extract Word2vec word vectors                                                 | Repository
-create_w2v_embedding.py             | Extract Word2vec word vectors                                                 | Repository
-data_study2.RData                   | WORCS metadata YAML                                                           | Run final_script.Rmd
-dict_wordvec_sim.csv                | Project file                                                                  | Run gensim_to_dict.py (not working)
-english-ewt-ud-2.5-191206.udpipe    |                                                                               | Repository
-feature_extraction.py               | Show how to apply feature extraction without the simulation mode in ASReview  | Repository 
-final_filter.csv                    | WORCS metadata YAML                                                           | Run final_script.Rmd 
-final_filter.Rdata                  | WORCS metadata YAML                                                           | Run final_script.Rmd
-final_script.Rmd                    | Main script of this project                                                   | Repository
-gensim_to_dict.py                   | Transforming gensim model                                                     | Repository
-gensim.model                        | Transforming gensim model                                                     | Repository
-glove_embedding_bigrams.RData       | User permissions                                                              | Run final_script.Rmd   
-glove_embedding_final.RData         | Project file                                                                  | Run final_script.Rmd
-glove.840B.300d.txt                 | WORCS metadata YAML                                                           | Download online 
-GoogleNews-vectors-negative300.bin  | WORCS metadata YAML                                                           | Download online 
-pretrained_w2v_filtered_bigrams.csv | WORCS metadata YAML                                                           | Run create_w2v_emb_bigrams.py
-pretrained_w2v_filtered.csv         | WORCS metadata YAML                                                           | Run create_w2v_embedding.py 
-README.md                           | Description of project                                                        | Repository
-study2_df_lemma.RData               | Preregistered hypotheses                                                      | Run final_script.Rmd
-w2v_bigrams_embedding.RData         | Reproducible R environment                                                    | Run final_script.Rmd
-w2v_embedding_final.RData           | Preregistered hypotheses                                                      | Run final_script.Rmd
+File                                | Description                                                                                                   | Access      
+-------------------------           | --------------------------------------------                                                                  | --------------
+asreview_embedding_sim_final.RData  | Matrix with word vectors obtain by running the simulation mode in ASReview                                    | Repository
+bigrams_filter_glove.RData          | Dataframe containing the terms (including bigrams separate with a -) we want to include in the analysis       |Run final_script.Rmd
+bigrams_filter.csv                  | Dataframe containing the terms (including bigrams separate with a _) we want to include in the analysis       | Run final_script.Rmd
+bigrams_filter.RData                | Dataframe containing the terms (including bigrams separate with a _) we want to include in the analysis       | Run final_script.Rmd
+create_w2v_emb_bigrams.py           | Extract word vectors (including for bigram terms) from existing Word2Vec dataset                              | Repository
+create_w2v_embedding.py             | Extract word vectors from existing Word2Vec dataset                                                           | Repository
+data_study2.RData                   | Dataframe after applying first pre-processing steps that were also done in the original manuscript            | Run final_script.Rmd
+dict_wordvec_sim.csv                | Dictionary with the terms as the keys and their associated word vectors                                       | Run gensim_to_dict.py (not working)
+english-ewt-ud-2.5-191206.udpipe    | English udpipe model                                                                                          | Repository
+feature_extraction.py               | Python script that shows how to apply feature extraction without the simulation mode in ASReview              | Repository 
+final_filter.csv                    | Dataframe containing the terms(only unigrams) we want to include in the analysis                              | Run final_script.Rmd 
+final_filter.Rdata                  | Dataframe containing the terms(only unigrams) we want to include in the analysis                              | Run final_script.Rmd
+final_script.Rmd                    | Main script of this project                                                                                   | Repository
+gensim_to_dict.py                   | Transforming the vocab and matrix from the gensim model to a dictionary                                       | Repository
+gensim.model                        | Doc2Vec object retrieved by running the ASReview simulation mode which contains the word vectors              | Repository
+glove_embedding_bigrams.RData       | Matrix containing the terms (including bigrams) and their word vector extracted from the GloVe dataset        | Run final_script.Rmd   
+glove_embedding_final.RData         | Matrix containing the terms (only unigrams) and their word vector extracted from the GloVe dataset            | Run final_script.Rmd
+glove.840B.300d.txt                 | File containing the existing pre-trained GloVe word vectors                                                   | Download online 
+GoogleNews-vectors-negative300.bin  | File containing the existing pre-trained Word2Vec word vectors                                                | Download online 
+pretrained_w2v_filtered_bigrams.csv | File containing word vectors that could be extracted from the Word2Vec dataset (including for bigrams terms)  | Run create_w2v_emb_bigrams.py
+pretrained_w2v_filtered.csv         | File containing word vectors that could be extracted from the Word2Vec dataset (only for bigrams terms)       | Run create_w2v_embedding.py 
+README.md                           | Description of project                                                                                        | Repository
+study2_df_lemma.RData               | Dataframe in which a column is added with the terms to be included in the analysis to the original dataset    | Run final_script.Rmd
+w2v_bigrams_embedding.RData         | Matrix containing the terms (including bigrams) and their word vector extracted from the Word2Vec dataset     | Run final_script.Rmd
+w2v_embedding_final.RData           | Matrix containing the terms (only unigrams) and their word vector extracted from the Word2Vec dataset         | Run final_script.Rmd
 
 ## Issue with reproducibility of one file 
 Note that the file `asreview_embedding_sim_final.Rdata` cannot be reproduced and should there for be used directly. 
