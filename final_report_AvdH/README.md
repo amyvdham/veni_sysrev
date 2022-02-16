@@ -36,9 +36,9 @@ glove_embedding_final.RData         | Matrix containing the terms (only unigrams
 glove.840B.300d.txt                 | File containing the existing pre-trained GloVe word vectors                                                   | Download online 
 GoogleNews-vectors-negative300.bin  | File containing the existing pre-trained Word2Vec word vectors                                                | Download online 
 pretrained_w2v_filtered_bigrams.csv | File containing word vectors that could be extracted from the Word2Vec dataset (including for bigrams terms)  | Run create_w2v_emb_bigrams.py
-pretrained_w2v_filtered.csv         | File containing word vectors that could be extracted from the Word2Vec dataset (only for bigrams terms)       | Run create_w2v_embedding.py 
+pretrained_w2v_filtered.csv         | File containing word vectors that could be extracted from the Word2Vec dataset (only for unigram terms)       | Run create_w2v_embedding.py 
 README.md                           | Description of project                                                                                        | Repository
-study2_df_lemma.RData               | Dataframe in which a column is added with the terms to be included in the analysis to the original dataset    | Run final_script.Rmd
+study2_df_lemma.RData               | Dataframe with the original data including a column with the terms to be included in the analysis      | Run final_script.Rmd
 w2v_bigrams_embedding.RData         | Matrix containing the terms (including bigrams) and their word vector extracted from the Word2Vec dataset     | Run final_script.Rmd
 w2v_embedding_final.RData           | Matrix containing the terms (only unigrams) and their word vector extracted from the Word2Vec dataset         | Run final_script.Rmd
 
