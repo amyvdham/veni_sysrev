@@ -168,7 +168,7 @@ saveRDS(lemma_clean, "final_report_AvdH/study2_df_lemma.RData")
 
 
 ## Save dataframe which only includes the filter column - final filter
-I also save a date frame with only the filter column and keeping only the unique terms. This filter can than be easily applied on the datasets with the pre-trained GloVe and Word2Vec word vectors.  
+I also save a date frame with only the filter column and keeping only the unique terms. This filter can than be easily applied on the data sets with the pre-trained GloVe and Word2Vec word vectors.  
 
 ```{r}
 # SAVE.RData OBJECT WHICH ONLY CONTAINS THE FILTER_LEMMA COLUMN.
@@ -195,7 +195,12 @@ saveRDS(filter_lemma, "final_report_AvdH/final_filter.RData")
 # IMPORTANT TO MAKE SURE THIS CSV BELOW IS CREATED BEFORE RUNNING THE PYTHON SCRIPT (create_w2v_embedding.py) IN WHICH THE WORD VECTORS ARE EXTRACTED FROM THE PRETRAINED WORD2VEC DATASET
 
 # since the word2vec vectors are loaded into Python we also need to save this filter as a .csv file
+filenam5 <- "final_report_AvdH/final_filter.csv"
+if(!file.exists(filenam5)){
 write.csv(filter_lemma,"final_report_AvdH/final_filter.csv", row.names = FALSE)
+} else {
+  print("The final_filter.csv should already be in your repository")
+}
 ```
 
 ## Save dataframe which only includes the filter column - bigrams filter (Word2Vec)
@@ -203,8 +208,8 @@ Create filter in which bigrams are also included. For the Word2vec dataset bigra
 
 ```{r}
 # check if file already exists, if not, code will be run to create the file 
-filenam5 <- "final_report_AvdH/bigrams_filter.RData"
-if(!file.exists(filenam5)){
+filenam6 <- "final_report_AvdH/bigrams_filter.RData"
+if(!file.exists(filenam6)){
 
 # apply text_rank function for identifying bigrams. Seperate them with _ 
 kw_tr <- textrank_keywords(x =  lemma_clean$filter_lemma[lemma_clean$upos %in% c("NOUN", "ADJ")], ngram_max = 2, sep = "_")
@@ -241,13 +246,18 @@ filter_bigrams <- as.data.table(filter_bigrams)
 saveRDS(filter_bigrams, "final_report_AvdH/bigrams_filter.RData")
 
 } else {
-  filter_bigrams <- readRDS(filenam5)
+  filter_bigrams <- readRDS(filenam6)
 }
 
 # IMPORTANT TO MAKE SURE THIS CSV BELOW IS CREATED BEFORE RUNNING THE PYTHON SCRIPT (create_w2v_emb_bigrams.py) IN WHICH THE WORD VECTORS ARE EXTRACTED FROM THE PRETRAINED WORD2VEC DATASET
 
-# since the word2vec vectors are loaded into Python we also need to save this filter as a .csv file. 
+# since the word2vec vectors are loaded into Python we also need to save this filter as a .csv file.
+filenam7 <- "final_report_AvdH/bigrams_filter.csv"
+if(!file.exists(filenam7)){
 write.csv(filter_bigrams,"final_report_AvdH/bigrams_filter.csv", row.names = FALSE)
+} else {
+  print("The bigrams_filter.csv should already be in your repository")
+}
 ```
 
 
@@ -256,8 +266,8 @@ Create filter in which bigrams are also included. For the GloVe dataset bigrams 
 
 ```{r}
 # check if file already exists, if not, code will be run to create the file 
-filenam6 <- "final_report_AvdH/bigrams_filter_glove.RData"
-if(!file.exists(filenam6)){
+filenam8 <- "final_report_AvdH/bigrams_filter_glove.RData"
+if(!file.exists(filenam8)){
   
 # apply text_rank function for identifying bigrams. Seperate them with -
 kw_tr_glove <- textrank_keywords(x =  lemma_clean$filter_lemma[lemma_clean$upos %in% c("NOUN", "ADJ")], ngram_max = 2, sep = "-")
@@ -295,7 +305,7 @@ filter_bigrams_glove <- as.data.table(filter_bigrams_glove)
 saveRDS(filter_bigrams_glove, "final_report_AvdH/bigrams_filter_glove.RData")
 
 } else {
-  filter_bigrams_glove <- readRDS(filenam6)
+  filter_bigrams_glove <- readRDS(filenam8)
 }
 ```
 
@@ -306,8 +316,8 @@ The filters that are created above and contain the terms that we are interested 
 *MAKE SURE THAT YOU HAVE DOWNLOADED THE EXISTING GLOVE DATASET WITH PRE-TRAINED WORD VECTORS FROM THE FOLLOWING PAGE:  https://github.com/stanfordnlp/GloVe/*
 ```{r}
 # check if file already exists, if not, code will be run to create the file 
-filenam7 <- "final_report_AvdH/glove_embedding_final.RData"
-if(!file.exists(filenam7)){
+filenam9 <- "final_report_AvdH/glove_embedding_final.RData"
+if(!file.exists(filenam9)){
 
 # load data set with existing pre-trained glove vectors into R
 vectors_glove <- data.table::fread('final_report_AvdH/glove.840B.300d.txt', data.table = F,  encoding = 'UTF-8', quote="") 
@@ -332,7 +342,7 @@ str(glove_embedding)
 saveRDS(glove_embedding, "final_report_AvdH/glove_embedding_final.RData")
 
 } else {
-  glove_embedding <- readRDS(filenam7)
+  glove_embedding <- readRDS(filenam9)
 }
 ```
 
@@ -340,8 +350,8 @@ saveRDS(glove_embedding, "final_report_AvdH/glove_embedding_final.RData")
 
 ```{r}
 # check if file already exists, if not, code will be run to create the file 
-filenam8 <- "final_report_AvdH/glove_embedding_bigrams.RData"
-if(!file.exists(filenam8)){
+filenam10 <- "final_report_AvdH/glove_embedding_bigrams.RData"
+if(!file.exists(filenam10)){
   
 # create df in which only the words that we want to be included are kept (i.e., extract word vectors for terms in filter_bigrams_glove data frame from the glove data set)
 glove_emb_bigrams <- subset(vectors_glove, word %in% filter_bigrams_glove$filter_bigrams_glove)
@@ -358,7 +368,7 @@ str(glove_bigrams_embedding)
 saveRDS(glove_bigrams_embedding, "final_report_AvdH/glove_embedding_bigrams.RData")
 
 } else {
-  glove_bigrams_embedding <- readRDS(filenam8)
+  glove_bigrams_embedding <- readRDS(filenam10)
 }
 ```
 
@@ -372,8 +382,8 @@ Therefore it is important that the following file, `pretrained_w2v_filtered.csv`
 
 ```{r}
 # check if file already exists, if not, code will be run to create the file 
-filenam9 <- "final_report_AvdH/w2v_embedding_final.RData"
-if(!file.exists(filenam9)){
+filenam11 <- "final_report_AvdH/w2v_embedding_final.RData"
+if(!file.exists(filenam11)){
 
 # load the data frame with the extracted pre-trained word2vec vectors which has been created in the Python file: create_w2v_embedding.py
 wrd2vec_embedding <- read.csv("final_report_AvdH//pretrained_w2v_filtered.csv", header = FALSE)
@@ -430,7 +440,7 @@ str(w2v_embedding)
 saveRDS(w2v_embedding, "final_report_AvdH/w2v_embedding_final.RData")
 
 } else {
-  w2v_embedding <- readRDS(filenam9)
+  w2v_embedding <- readRDS(filenam11)
 }
 
 ```
@@ -444,8 +454,8 @@ Therefore it is important that the following file, `pretrained_w2v_filtered_bigr
 *FIRST RUN THE PYTHON SCRIPT `create_w2v_emb_bigrams.py`*
 ```{r}
 # check if file already exists, if not, code will be run to create the file 
-filenam10 <- "final_report_AvdH/w2v_bigrams_embedding.RData"
-if(!file.exists(filenam10)){
+filenam12 <- "final_report_AvdH/w2v_bigrams_embedding.RData"
+if(!file.exists(filenam12)){
 
 # load the data frame with the extracted pre-trained word2vec vectors which includes bigrams and has been created in the Python file: create_w2v_emb_bigrams.py
 w2v_embedding_bigram <- read.csv("final_report_AvdH//pretrained_w2v_filtered_bigrams.csv", header = FALSE)
@@ -502,7 +512,7 @@ str(w2v_bigrams_embedding)
 saveRDS(w2v_bigrams_embedding, "final_report_AvdH//w2v_bigrams_embedding.RData")
 
 } else {
-  w2v_bigrams_embedding <- readRDS(filenam10)
+  w2v_bigrams_embedding <- readRDS(filenam12)
 }
 ```
 
@@ -635,7 +645,6 @@ length(unique(rownames(diff_w2v))) == length(unique(rownames(bigrams_both))) + l
 # check if things add up for glove
 length(unique(rownames(diff_glove))) == length(unique(rownames(bigrams_both))) + length(unique(rownames(bigrams_in_glove)))
 ```
-
 
 ## Clean file with word vectors extracted through ASReview simulation mode
 Word vectors were also obtained through running the simulation mode of ASReview while using doc2vec_grab as feature extractor. In the Python script: gensim_to_dict.py, the matrix and vocab from the genism.model that resulted from the running the simulation mode were transformed to a dictionary and saved in the dict_wordvec_sim.csv file. This .csv file should be in the repository and is used in the block of code below. 
@@ -868,7 +877,7 @@ kmeans_fit125$centers
 kmeans_fit125$size
 min(kmeans_fit125$size)
 max(kmeans_fit125$size)
-# -> do not see a cluster with extremely low number of observations. Minimum is 31 and max is 210 
+# -> do not see a cluster with extremely low number of observations. Minimum is 31 and max is 210
 
 # The cost function in k means is the total sum of the squares
 kmeans_fit125$totss
@@ -944,7 +953,6 @@ cluster21_2 <- subset(words_with_cluster21_3, subset=kmeans3 == 2)
 cluster21_3 <- subset(words_with_cluster21_3, subset=kmeans3 == 3)
 
 # visualize the k-means (with k = 3) clusters
-set.seed(88)
 fviz_cluster(kmeans_fit3_cluster21, data = embedding_cluster21,
 palette = c("#E7B800", "#2E9FDF", "#00AFBB"),
 ellipse.type = "euclid", # Concentration ellipse
@@ -952,11 +960,23 @@ star.plot = TRUE, # Add segments from centroids to items
 repel = TRUE, # Avoid label overplotting (slow)
 ggtheme = theme_minimal()
 )
+
 # set max overlap to Inf to show all the labels in the plot. 
 #options(ggrepel.max.overlaps = Inf)
 # -> makes the plot unreadable
 
+# For some reason if the kmeans is run straight after creating this plot I receive some remaining ggrepel warning when calling the kmean function and this influence the results of the cluster analysis and cause them to not be reproducible. So even after having these ggrepel warnings displayed after creating the plot, when continuing with other commands the warning are printed again randomly and influence the set.seed and results. Online I found some others that have this same issue and they solved this by running the next command below. See the following page: https://github.com/slowkow/ggrepel/issues/187 for more information. 
+baseenv()$last.warning
+assign("last.warning", NULL, envir = baseenv())
+baseenv()$last.warning
+# -> this does not seem to solve the issue, therefore the k-means clustering with 125 clusters on the data frame with word vectors extracted from word2vec and including bigram terms is fitted two times in a row. The second time you should not get the warnings and be able to reproduce the results in the paper. I am aware that this is not the best way to solve this but due to time limits this was my best option for now. 
+
 # K-means clustering - Word2Vec including bigrams (k = 125)
+# fit the k-means clustering with 125 clusters on the data frame with word vectors extracted from word2vec and including bigram terms.
+set.seed(88)
+kmeans_fit125_w2v <- kmeans(w2v_bigrams_embedding, 125, iter.max = 30, nstart = 25)
+# NOTE: you will receive ggrepel warnings after running this line of code. The results in this cluster object should not be interpret instead the function should be called again with the lines of code below
+
 # fit the k-means clustering with 125 clusters on the data frame with word vectors extracted from word2vec and including bigram terms.
 set.seed(88)
 kmeans_fit125_w2v <- kmeans(w2v_bigrams_embedding, 125, iter.max = 30, nstart = 25)
@@ -1105,7 +1125,7 @@ plot_cluster_tsne(tsne_clst_113_w2v, embedding_cluster113_w2v, clst_number = "11
 ```
 
 ## DBSCAN 
-Applying DBSCAN for clustering the terms has also been explored. Based on the steps in the following tutorial: http://www.sthda.com/english/wiki/wiki.php?id_contents=7940 the DBSCAN algorithm has been applied on the matrix that contains the word vectors extracted from the GloVe data set. Note that this is a try out and contains comments on my decisions. 
+Applying DBSCAN for clustering the terms has also been explored. Based on the steps in the following tutorial: http://www.sthda.com/english/wiki/wiki.php?id_contents=7940 the DBSCAN algorithm has been applied on the matrix that contains the word vectors extracted from the GloVe data set. Note that this is a try out and contains some comments on my decisions in the code block. 
 ```{r}
 # load libraries that are need to perform dbscan clustering 
 library(fpc)
@@ -1127,7 +1147,7 @@ print(db)
 
 # determine minPts 
 library(SciViews)
-# I have found online that you should set minPts to ln(n) so that is why this is calculated below. 
+# I have found online (https://stackoverflow.com/questions/12893492/choosing-eps-and-minpts-for-dbscan-r) that you should set minPts to ln(n) so that is why this is calculated below. 
 ln(11562)
 
 # determining optimal eps value
@@ -1157,16 +1177,16 @@ cluster7 <- subset(kw_with_cluster, subset=dbscan9 == 7)
 cluster8 <- subset(kw_with_cluster, subset=dbscan9 == 8)
 cluster9 <- subset(kw_with_cluster, subset=dbscan9 == 9)
 
-# I have also read somewhere that you should set minPts to 2*dim. Which in our case means 2*300 = 600. Let try what happens if we do that
+# I have also read somewhere that you should set minPts to 2*dim (https://medium.com/@tarammullin/dbscan-parameter-estimation-ff8330e3a3bd). Which in our case means 2*300 = 600. Let try what happens if we do that
 # determining optimal eps value
 dbscan::kNNdistplot(glove_embedding, k =  600)
 abline(h = 6.5, lty = 2)
 abline(h = 9.2, lty = 2)
 
-# based on the running the codelines above try dbscan with minPts = 600 and eps = 6.5
+# based on the running the code lines above try dbscan with minPts = 600 and eps = 6.5
 db_6.5_600 <- dbscan::dbscan(glove_embedding, 6.5, 600) 
 print(db_6.5_600)
-# -> geeft 1 cluster en de rest als noise points. 
+# -> gives one cluster and other observations as noise points. 
 
 # TRYOUTS
 # try dbscan met eps = 4 and minPts = 5
@@ -1195,7 +1215,7 @@ cluster13_12 <- subset(kw_with_cluster, subset=dbscan4 == 12)
 cluster13_13 <- subset(kw_with_cluster, subset=dbscan4 == 13)
 
 
-# try dbscan met een andere minPts value
+# try dbscan with different minPts value
 db4_10 <- dbscan::dbscan(glove_embedding, 4, 10) 
 print(db4_10)
 
@@ -1204,7 +1224,7 @@ db_ra <- dbscan::dbscan(glove_embedding, .25, 10)
 print(db_ra)
 # -> results in all observations being classified as noise.
 
-# try dbscan with smaller eps. : eps = 0.10
+# try dbscan with smaller eps, eps = 0.10
 db10_4 <- dbscan::dbscan(glove_embedding, 0.10, 4) 
 print(db10_4)
 # -> this small eps value will lead to all the point being noise
@@ -1213,7 +1233,7 @@ print(db10_4)
 db1.5_4 <- dbscan::dbscan(glove_embedding, 1.5, 10000) 
 print(db1.5_4)
 # -> results in all observations being classified as noise.
-
+```
 
 
 
