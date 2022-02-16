@@ -9,7 +9,6 @@
 !clustering100.RData
 !clustering119.RData
 !study2_df_token.Rdata
-!asreview_embedding_sim_final.Rdata
 *.h5
 bunnies.R
 *.log
@@ -38,6 +37,9 @@ pretrained_w2v_filtered2.csv
 pretrained_w2v_filtered_bigrams.csv
 bigrams_filter.csv
 final_filter.csv
+dict_wordvec_sim.csv
+!asreview_embedding_sim_final.Rdata
+!english-ewt-ud-2.5-191206.udpipe
 glove.840B.300d_original.txt
 GoogleNews-vectors-negative300_original.bin
 pretrained_w2v_filtered_original.csv
