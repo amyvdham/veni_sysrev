@@ -42,7 +42,7 @@ Steps that are applied:
 filenam1 <- "final_report_AvdH/data_study2.RData"
 if(!file.exists(filenam1)){
   
-# Steps in original manuscript up until before the methodological filter is applied
+# Steps in original manuscript up until just before the methodological filter is applied
 # load file that contains all selected records (articles). Make sure that the path is i
 recs <- data.table(read.csv("recs_final.csv"))
 recs[, "doc" := 1:nrow(recs)]
@@ -92,7 +92,7 @@ saveRDS(df_kw, "final_report_AvdH/data_study2.RData")
 ```
 
 ## Pre-proccessing - additional steps for cluster analysis
-Apply more pre - processing steps before conducting cluster analysis.  
+Apply more pre-processing steps before conducting cluster analysis.  
 
 Steps that are applied:
   - Split the string values at - 
@@ -447,7 +447,7 @@ saveRDS(w2v_embedding, "final_report_AvdH/w2v_embedding_final.RData")
 
 ## Extract word vectors from data set with pretained word vectors and clean data frame in which these will be saved - Word2Vec including bigrams.
 
-Note that the existing pre-trained word vectors from the Word2Vec dataset are extracted in a Python file and the code below only loads the resulted dataframe, cleans the dataframe an saves the dataframe as a .RData object.
+Note that the existing pre-trained word vectors from the Word2Vec dataset are extracted in a Python file and the code below only loads the resulted dataframe, cleans the dataframe and saves the dataframe as an .RData object.
 
 Therefore it is important that the following file, `pretrained_w2v_filtered_bigrams.csv` is in the folder `final_report_AvdH`. To create the .csv file you will need to run the following Python script: `create_w2v_emb_bigrams.py`. 
 
