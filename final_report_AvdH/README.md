@@ -3,7 +3,7 @@
 This folder contains the source code for the final report *“Research assistantship for Caspar van Lissa: Applying cluster analysis on word vectors”*. The aim of this project was to investigate whether it is possible to identify closely related terms in a corpus of abstracts of articles related to emotional regulation by applying k-means clustering on word vectors. 
 
 ## Where to start?
-The file `final_script.Rmd` is the main script of this project and contains the code that was used for producing the result that can be found in the final report. To reproduce the analyses in the final report the following steps need to be taken. 
+The file `final_script.Rmd` is the main script of this project and contains the code that was used for producing the results that can be found in the final report. To reproduce the analyses in the final report the following steps need to be taken. 
 
 First, it is important that the `veni_sysrev` is set as the working directory. (When running the Python files your working directory should be set to `veni_sysrev/final_report_AvdH`)
 
@@ -11,13 +11,13 @@ Secondly, before opening and running the script `final_script.Rmd`, you have to 
 
 Thirdly, there are two python scripts, `create_w2v_embedding.py` and `create_w2v_emb_bigrams.py`, that need to be run in order to create two files that are needed in the final script, `pretrained_w2v_filtered_bigrams.csv` and `pretrained_w2v_filtered.csv`. 
 
-To be able to run these Python scripts the csv files `final_filter.csv` and `bigrams_filter.csv` first need to be created by running the associated code in the `final_script.Rmd` file. This code can be found in the block underneed the heading *“Save dataframe which only includes the filter column - final filter”* and *“Save dataframe which only includes the filter column - bigrams filter (Word2Vec)”*.
+To be able to run these Python scripts the csv files, `final_filter.csv` and `bigrams_filter.csv`, first need to be created by running the associated code in the `final_script.Rmd` file. This code can be found in the block underneath the heading *“Save dataframe which only includes the filter column - final filter”* and *“Save dataframe which only includes the filter column - bigrams filter (Word2Vec)”*.
 
 ## Overview Files 
 File                                | Description                                                                                                   | Access      
 -------------------------           | --------------------------------------------                                                                  | --------------
-asreview_embedding_sim_final.RData  | Matrix with word vectors obtain by running the simulation mode in ASReview                                    | Repository
-bigrams_filter_glove.RData          | Dataframe containing the terms (including bigrams separate with a -) we want to include in the analysis       |Run final_script.Rmd
+asreview_embedding_sim_final.RData  | Matrix with word vectors obtained by running the simulation mode in ASReview                                  | Repository
+bigrams_filter_glove.RData          | Dataframe containing the terms (including bigrams separate with a -) we want to include in the analysis       | Run final_script.Rmd
 bigrams_filter.csv                  | Dataframe containing the terms (including bigrams separate with a _) we want to include in the analysis       | Run final_script.Rmd
 bigrams_filter.RData                | Dataframe containing the terms (including bigrams separate with a _) we want to include in the analysis       | Run final_script.Rmd
 create_w2v_emb_bigrams.py           | Extract word vectors (including for bigram terms) from existing Word2Vec dataset                              | Repository
@@ -43,7 +43,7 @@ w2v_bigrams_embedding.RData         | Matrix containing the terms (including big
 w2v_embedding_final.RData           | Matrix containing the terms (only unigrams) and their word vector extracted from the Word2Vec dataset         | Run final_script.Rmd
 
 ## Issue with reproducibility of one file 
-Note that the file `asreview_embedding_sim_final.Rdata` cannot be reproduced and should there for be used directly. 
+Note that the file `asreview_embedding_sim_final.Rdata` cannot be reproduced and should therefor be used directly. 
 
 This is because at the moment it is not possible to recreate the `dict_wordvec_sim.csv` file out of which the `asreview_embedding_sim_final.Rdata` is created. 
 
