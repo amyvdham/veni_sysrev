@@ -5,6 +5,7 @@ from asreview.models.feature_extraction import Doc2Vec
 from asreview import ASReviewData
 
 # Load the data
+# Make sure to check whether the articles are labelled correctly in this file. It could be that they are reversed code
 ASdata = ASReviewData.from_file("veni_sysrev/asreview_result_sysrevemotprob.csv")
 
 # Create the feature extractor object
@@ -13,7 +14,7 @@ featureExtractorDV = Doc2Vec()
 # Fit the model
 featureExtractorDV.fit(ASdata.texts)
 
-# not sure what the difference between the two models is
+# Not sure what the difference between the two models is
 gensimobjecta = featureExtractorDV.model_dm
 
 gensimobject = featureExtractorDV.model_dbow
