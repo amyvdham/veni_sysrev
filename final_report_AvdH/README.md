@@ -43,7 +43,7 @@ w2v_bigrams_embedding.RData         | Matrix containing the terms (including big
 w2v_embedding_final.RData           | Matrix containing the terms (only unigrams) and their word vector extracted from the Word2Vec dataset         | Run final_script.Rmd
 
 ## Issue with reproducibility of one file 
-Note that the file `asreview_embedding_sim_final.Rdata` cannot be reproduced and should therefor be used directly. 
+Note that the file `asreview_embedding_sim_final.Rdata` cannot be reproduced and should therefore be used directly. 
 
 This is because at the moment it is not possible to recreate the `dict_wordvec_sim.csv` file out of which the `asreview_embedding_sim_final.Rdata` is created. 
 
