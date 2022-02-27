@@ -32,13 +32,13 @@ r-references.bib
 levesque_final.txt
 glove.840B.300d.txt
 GoogleNews-vectors-negative300.bin
+dict_feature_extraction_doc2vec.cvs
 pretrained_w2v_filtered.csv
 pretrained_w2v_filtered2.csv
 pretrained_w2v_filtered_bigrams.csv
 bigrams_filter.csv
 final_filter.csv
 dict_wordvec_sim.csv
-dict_feature_extraction_doc2vec.cvs
 !asreview_embedding_sim_final.Rdata
 !english-ewt-ud-2.5-191206.udpipe
 glove.840B.300d_original.txt
