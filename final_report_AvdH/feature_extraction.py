@@ -35,13 +35,13 @@ featureExtractorDV.fit(ASdata.texts)
 #            self.model = _train_model(corpus, **model_param, dm=self.dm)
 
 # Based on the information above I would expect model_dm to contain the 
-# feature vectors resulting from using distributed memory(dm) since dm=1
+# feature vectors resulting from using distributed memory(dm) since dm = 1
 # and model_dbow those resulting from using distributed bag of words (dbow) 
 # since dm = 0. However I do not know which model represent dm = 2 and 
 # contains the concatenated feature vectors of both the models. I have tried
 # model (featureExtractorDV.model_dm) but then I receive the error
-# 'Doc2Vec' object has no attribute 'model'. Therefore I have decided for now
-# to just used the feature vectors from the dbow model. 
+# 'Doc2Vec' object has no attribute 'model'. Therefore, for now, I have 
+# decided to just use the feature vectors from the dbow model. 
 
 gensimobjecta = featureExtractorDV.model_dm
 
