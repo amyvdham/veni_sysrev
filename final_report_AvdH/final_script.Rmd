@@ -11,6 +11,9 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+*NOTE: It is important to run the chunks one by one and to read the instructions in this markdown file.*
+
+
 ```{r}
 # load libraries
 library(stringr)
@@ -784,7 +787,7 @@ elbow_plot_glove <- fviz_nbclust(glove_embedding, kmeans, iter.max = 40, nstart 
 
 # Silhouette method
 set.seed(88)
-fviz_nbclust(glove_embedding, kmeans, iter.max = 50, nstart = 25, method = "silhouette", k.max = 150) +
+fviz_nbclust(glove_embedding, kmeans, iter.max = 30, nstart = 25, method = "silhouette", k.max = 150) +
   labs(subtitle = "Silhouette method")
 # NOTE: it takes a really long time too run this and it gives 6 Quick Transfer warning messages. The results indicate two to be the optimal number of clusters. 
 
@@ -1247,5 +1250,47 @@ print(db1.5_4)
 # -> results in all observations being classified as noise.
 ```
 
+## Check which cluster contains the months in the results of the application of kmeans with GloVe word vectors and k = 125
+Since it was found that when applying DBSCAN, nine months of the year were put together in one cluster, it was checked to which cluster these terms belonged in the application of the k-means algorithm (k = 125) that was conducted earlier on. Next to this, a cluster analysis was conducted within this specific cluster in which these months could be found. 
+```{r}
+# find out to which cluster one of the months, august, is assigned
+words_with_cluster125[words_with_cluster125$word == "august",]
+cluster125_110 <- subset(words_with_cluster125, subset=kmeans125 == 110)
+
+## Cluster analysis within cluster 
+# create a matrix that only contains the terms and their associated word vectors that belong to one cluster (cluster 110)
+embedding_cluster110 <- subset(glove_embedding, rownames(glove_embedding) %in% cluster125_110$word)
+
+# apply k-means on this subset with k = 3 
+set.seed(88)
+kmeans_fit3_cluster110 <- kmeans(embedding_cluster110, 3, iter.max = 30, nstart = 25)
+
+# look at the resulting cluster assignments
+# create data frame in which the merge cluster assignment back to rows/word
+words_with_cluster110_3 <- as.data.frame(cbind(row.names(embedding_cluster110), kmeans_fit3_cluster110$cluster))
+# add column names
+names(words_with_cluster110_3) <- c("word", "kmeans3") 
+
+
+# make data frames of the 3 resulting clusters to check which terms are assigned to which cluster
+cluster110_1 <- subset(words_with_cluster110_3, subset=kmeans3 == 1) 
+cluster110_2 <- subset(words_with_cluster110_3, subset=kmeans3 == 2)
+cluster110_3 <- subset(words_with_cluster110_3, subset=kmeans3 == 3)
+
+# visualize the k-means (with k = 3) clusters 
+set.seed(88) 
+fviz_cluster(kmeans_fit3_cluster110, data = embedding_cluster110,
+            palette = c("#E7B800", "#2E9FDF", "#00AFBB"),
+            ellipse.type = "euclid", # Concentration ellipse
+            star.plot = TRUE, # Add segments from centroids to items
+            repel = TRUE, # Avoid label overplotting (slow)
+            ggtheme = theme_minimal()
+ )
+
+# try to get rid of remaining warnings 
+baseenv()$last.warning
+assign("last.warning", NULL, envir = baseenv())
+baseenv()$last.warning
+```
 
 
